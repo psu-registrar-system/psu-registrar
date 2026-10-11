@@ -197,7 +197,16 @@
         </div>
       </div>
 
+      <!-- View tabs -->
+      <div class="flex items-center gap-2">
+        <button id="tabQueue" onclick="switchView('queue')" class="px-4 py-2 rounded-xl text-xs font-bold border bg-[#5c0612] text-amber-200 border-[#5c0612]">Active Queue</button>
+        <button id="tabInventory" onclick="switchView('inventory')" class="px-4 py-2 rounded-xl text-xs font-bold border bg-white text-[#5c0612] border-amber-300 hover:bg-amber-50">
+          Inventory <span id="inventoryCount" class="ml-1 text-[10px] font-black px-1.5 py-0.5 rounded-full bg-amber-200 text-[#5c0612]">0</span>
+        </button>
+      </div>
+
       <!-- Processing Queue Table -->
+      <div id="queueView">
       <div class="bg-white rounded-2xl border border-amber-200 shadow-sm overflow-hidden space-y-0">
         <div class="p-5 border-b border-amber-200 flex flex-wrap justify-between items-center gap-3 bg-amber-50/40">
           <div>
@@ -230,6 +239,38 @@
             </tbody>
           </table>
         </div>
+      </div>
+      </div>
+
+      <!-- Inventory of released requests -->
+      <div id="inventoryView" class="hidden bg-white rounded-2xl border border-amber-200 shadow-sm overflow-hidden">
+        <div class="p-5 border-b border-amber-200 flex flex-wrap justify-between items-center gap-3 bg-amber-50/40">
+          <div>
+            <h3 class="text-base font-bold text-[#5c0612]">Inventory of Released Requests</h3>
+            <p class="text-xs text-slate-500">Completed requests kept for records. Students can still track them with their reference number.</p>
+          </div>
+          <div class="flex flex-wrap items-center gap-2">
+            <input type="text" id="inventorySearch" oninput="renderInventory()" placeholder="Search reference, ID or name..." class="px-3 py-1.5 border border-amber-200 rounded-xl text-xs focus:ring-2 focus:ring-[#5c0612] focus:outline-none bg-white">
+            <input type="month" id="inventoryMonth" onchange="renderInventory()" title="Filter by month released" class="px-3 py-1.5 border border-amber-200 rounded-xl text-xs focus:ring-2 focus:ring-[#5c0612] focus:outline-none bg-white">
+          </div>
+        </div>
+
+        <div class="overflow-x-auto custom-scrollbar">
+          <table class="w-full text-left text-sm text-slate-600">
+            <thead class="bg-amber-100/60 text-[11px] text-[#5c0612] uppercase font-bold tracking-wider border-b border-amber-200">
+              <tr>
+                <th class="py-3 px-4">Reference & Student</th>
+                <th class="py-3 px-4">Document(s)</th>
+                <th class="py-3 px-4">Payment</th>
+                <th class="py-3 px-4">Released</th>
+                <th class="py-3 px-4">Moved By</th>
+                <th class="py-3 px-4 text-center">Action</th>
+              </tr>
+            </thead>
+            <tbody id="inventoryTableBody" class="divide-y divide-amber-100"></tbody>
+          </table>
+        </div>
+        <p id="inventoryFooter" class="px-5 py-3 text-[11px] text-slate-400 border-t border-amber-100"></p>
       </div>
 
     </div>
@@ -297,6 +338,18 @@
         </button>
         <p id="notifyHelpText" class="text-[10px] text-slate-400 mt-1 text-center">Opens your email app with the student's Gmail, subject & message pre-filled.</p>
       </div>
+
+      <div id="inventoryActionRow" class="hidden pt-1">
+        <button onclick="moveSelectedToInventory()" class="w-full bg-[#5c0612] hover:bg-[#780a18] text-amber-200 font-bold py-2.5 rounded-xl text-xs transition border border-amber-500/30 flex items-center justify-center gap-2">
+          <i class="fa-solid fa-box-archive"></i>
+          <span>Move to Inventory</span>
+        </button>
+        <p class="text-[10px] text-slate-400 mt-1 text-center">Keeps a record and removes it from the active queue.</p>
+      </div>
+
+      <div class="super-only hidden pt-1 text-center">
+        <button onclick="deleteSelectedRequest()" class="text-[11px] font-bold text-rose-600 hover:text-rose-700 underline">Delete this request permanently</button>
+      </div>
     </div>
   </div>
 
@@ -330,6 +383,24 @@
     </div>
   </div>
 
+  <!-- CONFIRMATION DIALOG -->
+  <div id="confirmModal" class="fixed inset-0 bg-slate-950/60 backdrop-blur-sm hidden z-[70] flex items-center justify-center p-4">
+    <div class="bg-white rounded-2xl shadow-2xl max-w-sm w-full p-6 space-y-4 border border-amber-200 max-h-[90vh] overflow-y-auto">
+      <div class="flex items-start gap-3">
+        <div id="confirmIcon" class="w-10 h-10 shrink-0 rounded-xl flex items-center justify-center text-lg"></div>
+        <div class="space-y-1">
+          <h3 id="confirmTitle" class="text-base font-bold text-slate-900"></h3>
+          <p id="confirmMessage" class="text-xs text-slate-500"></p>
+        </div>
+      </div>
+      <div id="confirmDetails" class="bg-amber-50/60 border border-amber-200 rounded-xl p-3 text-xs space-y-1.5"></div>
+      <div class="grid grid-cols-2 gap-2 pt-1">
+        <button onclick="resolveConfirm(false)" class="bg-amber-100 hover:bg-amber-200 text-[#5c0612] font-bold py-2.5 rounded-xl text-xs transition">Cancel</button>
+        <button id="confirmOkBtn" onclick="resolveConfirm(true)" class="font-bold py-2.5 rounded-xl text-xs transition">Confirm</button>
+      </div>
+    </div>
+  </div>
+
   <!-- CLEAR CONFIRMATION MODAL -->
   <div id="confirmClearModal" class="fixed inset-0 bg-slate-950/60 backdrop-blur-sm hidden z-50 flex items-center justify-center p-4">
     <div class="bg-white rounded-2xl shadow-2xl max-w-sm w-full p-6 text-center space-y-4 border border-amber-200">
@@ -338,7 +409,7 @@
       </div>
       <div class="space-y-1">
         <h3 class="text-base font-bold text-slate-900">Clear All Requests?</h3>
-        <p class="text-xs text-slate-500">This will delete all requests from all connected devices permanently, and reference numbers will start again from 0001.</p>
+        <p id="clearModalText" class="text-xs text-slate-500"></p>
       </div>
       <div class="grid grid-cols-2 gap-2 pt-2">
         <button onclick="closeConfirmClearModal()" class="bg-amber-100 hover:bg-amber-200 text-[#5c0612] font-bold py-2.5 rounded-xl text-xs transition">
@@ -565,6 +636,7 @@
       badge.className = 'text-[10px] font-black px-2 py-0.5 rounded-full ' +
         (isSuper ? 'bg-amber-200 text-[#5c0612]' : 'bg-white/20 text-amber-100');
       updateAutoEmailChip();
+      renderInventory();
     }
 
     function startListeners() {
@@ -617,6 +689,7 @@
       document.getElementById('processModal').classList.add('hidden');
       document.getElementById('accountsModal').classList.add('hidden');
       document.getElementById('confirmClearModal').classList.add('hidden');
+      resolveConfirm(false);
       renderAdminQueue();
     }
 
@@ -743,17 +816,20 @@
       const searchTerm = (document.getElementById('searchInput')?.value || '').toLowerCase().trim();
       tbody.innerHTML = '';
 
-      const pendingCount = requestsData.filter(r => r.status === 'Pending').length;
-      const pickupCount = requestsData.filter(r => r.status === 'Ready for Pickup').length;
-      const completedCount = requestsData.filter(r => r.status === 'Completed').length;
+      const activeData = requestsData.filter(r => !r.archived);
+      const pendingCount = activeData.filter(r => r.status === 'Pending').length;
+      const pickupCount = activeData.filter(r => r.status === 'Ready for Pickup').length;
+      const completedCount = activeData.filter(r => r.status === 'Completed').length;
 
       document.getElementById('statPending').innerText = pendingCount;
       document.getElementById('statPickup').innerText = pickupCount;
       document.getElementById('statCompleted').innerText = completedCount;
 
-      let filtered = requestsData;
+      renderInventory();
+
+      let filtered = activeData;
       if (searchTerm) {
-        filtered = requestsData.filter(r => 
+        filtered = activeData.filter(r => 
           r.id.toLowerCase().includes(searchTerm) || 
           r.name.toLowerCase().includes(searchTerm) ||
           r.doc.toLowerCase().includes(searchTerm) ||
@@ -832,6 +908,7 @@
       }
 
       updatePaymentStatusUI(req);
+      document.getElementById('inventoryActionRow').classList.toggle('hidden', req.status !== 'Completed' || !!req.archived);
 
       document.getElementById('processModal').classList.remove('hidden');
     }
@@ -888,18 +965,59 @@
       document.getElementById('processModal').classList.add('hidden');
     }
 
-    function updateSelectedRequestStatus(newStatus) {
+    async function updateSelectedRequestStatus(newStatus) {
       const req = getSelectedRequest();
       if (!req || !currentStaff) return;
       const newSlot = document.getElementById('modalPickupDate').value || req.slot;
 
-      const batch = db.batch();
-      batch.update(requestsCollection.doc(req._docId), {
+      const sameStatus = req.status === newStatus;
+      const emailNote = !req.email
+        ? 'No email address is on file, so no email will be sent.'
+        : (autoEmailEnabled()
+            ? `An email will be sent automatically to ${req.email}.`
+            : `Your mail app will open to email ${req.email}.`);
+
+      const ok = await showConfirm({
+        title: sameStatus
+          ? `Already marked ${newStatus}`
+          : (newStatus === 'Completed' ? 'Mark as Completed / Released?' : 'Mark as Ready for Pickup?'),
+        message: (sameStatus
+          ? `This request is already "${newStatus}". Confirming will send the student another email. `
+          : (newStatus === 'Completed'
+              ? 'Confirm the documents have been handed to the student. '
+              : 'Confirm the documents are ready to be picked up. ')) + emailNote,
+        details: [
+          ['Reference', req.reference || '-'],
+          ['Student', req.name],
+          ['Document(s)', req.doc],
+          ['Payment', `${req.payment} - ${req.paymentStatus || 'N/A'}`],
+          ['Pickup date', newSlot]
+        ],
+        confirmText: sameStatus ? 'Update and Email Again' : (newStatus === 'Completed' ? 'Yes, Mark Completed' : 'Yes, Mark Ready'),
+        tone: newStatus === 'Completed' ? 'success' : 'primary'
+      });
+      if (!ok) return;
+
+      // the list may have changed while the dialog was open
+      if (!getRequestByDocId(req._docId)) {
+        showToast('That request is no longer in the queue.', 'error');
+        closeProcessModal();
+        return;
+      }
+
+      const update = {
         status: newStatus,
         slot: newSlot,
         updatedBy: currentStaff.name || currentStaff.email,
         updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-      });
+      };
+      if (newStatus === 'Completed') {
+        update.completedAt = firebase.firestore.FieldValue.serverTimestamp();
+        update.completedBy = currentStaff.name || currentStaff.email;
+      }
+
+      const batch = db.batch();
+      batch.update(requestsCollection.doc(req._docId), update);
 
       if (req.reference) {
         batch.update(trackingCollection.doc(req.reference), {
@@ -1049,6 +1167,11 @@
     }
 
     function confirmClearAll() {
+      const activeCount = requestsData.filter(r => !r.archived).length;
+      const archivedCount = requestsData.length - activeCount;
+      document.getElementById('clearModalText').innerText = archivedCount > 0
+        ? `This permanently deletes the ${activeCount} request(s) in the Active Queue. The Inventory (${archivedCount}) is not touched, and reference numbers keep counting from where they are.`
+        : `This permanently deletes all ${activeCount} request(s) from all connected devices, and reference numbers will start again from 0001.`;
       document.getElementById('confirmClearModal').classList.remove('hidden');
     }
 
@@ -1059,24 +1182,255 @@
     async function executeClearAll() {
       if (!currentStaff || currentStaff.role !== 'superadmin') return;
       try {
-        const slotsSnap = await slotsCollection.get();
-        const trackingSnap = await trackingCollection.get();
-        const refs = [
-          ...requestsData.map(r => requestsCollection.doc(r._docId)),
-          ...slotsSnap.docs.map(d => d.ref),
-          ...trackingSnap.docs.map(d => d.ref),
-          countersCollection.doc('requests')
-        ];
-        for (let i = 0; i < refs.length; i += 400) {
+        const active = requestsData.filter(r => !r.archived);
+        const keepInventory = requestsData.length > active.length;
+        const ops = [];
+
+        active.forEach(r => ops.push(b => b.delete(requestsCollection.doc(r._docId))));
+
+        if (keepInventory) {
+          // The Inventory stays, so keep the reference numbering and only release this queue's slots
+          active.forEach(r => { if (r.reference) ops.push(b => b.delete(trackingCollection.doc(r.reference))); });
+          const perDate = {};
+          active.forEach(r => { if (r.slot) perDate[r.slot] = (perDate[r.slot] || 0) + 1; });
+          Object.keys(perDate).forEach(date => {
+            ops.push(b => b.set(slotsCollection.doc(date), { count: firebase.firestore.FieldValue.increment(-perDate[date]) }, { merge: true }));
+          });
+        } else {
+          // Nothing is kept: reset slot counters, tracking records and the reference counter
+          const slotsSnap = await slotsCollection.get();
+          const trackingSnap = await trackingCollection.get();
+          slotsSnap.docs.forEach(d => ops.push(b => b.delete(d.ref)));
+          trackingSnap.docs.forEach(d => ops.push(b => b.delete(d.ref)));
+          ops.push(b => b.delete(countersCollection.doc('requests')));
+        }
+
+        for (let i = 0; i < ops.length; i += 400) {
           const batch = db.batch();
-          refs.slice(i, i + 400).forEach(ref => batch.delete(ref));
+          ops.slice(i, i + 400).forEach(op => op(batch));
           await batch.commit();
         }
         closeConfirmClearModal();
       } catch (error) {
         console.error('Error clearing requests:', error);
-        alert('Could not clear all requests. Check your connection and try again.');
+        alert('Could not clear the requests. Check your connection and try again.');
       }
+    }
+
+    /* ---------- CONFIRMATION DIALOG ---------- */
+    let confirmResolver = null;
+
+    function showConfirm({ title, message, details = [], confirmText = 'Confirm', tone = 'primary' }) {
+      if (confirmResolver) { confirmResolver(false); confirmResolver = null; }
+
+      document.getElementById('confirmTitle').innerText = title;
+      document.getElementById('confirmMessage').innerText = message;
+      document.getElementById('confirmDetails').innerHTML = details.map(([label, value]) =>
+        `<div class="flex justify-between gap-3"><span class="text-slate-500">${esc(label)}</span><span class="font-bold text-slate-800 text-right">${esc(value)}</span></div>`
+      ).join('');
+      document.getElementById('confirmDetails').classList.toggle('hidden', details.length === 0);
+
+      const okBtn = document.getElementById('confirmOkBtn');
+      okBtn.innerText = confirmText;
+      okBtn.className = 'font-bold py-2.5 rounded-xl text-xs transition ' + (
+        tone === 'danger' ? 'bg-rose-600 hover:bg-rose-700 text-white'
+        : tone === 'success' ? 'bg-emerald-600 hover:bg-emerald-700 text-white'
+        : 'bg-[#5c0612] hover:bg-[#780a18] text-amber-200');
+
+      const icon = document.getElementById('confirmIcon');
+      icon.className = 'w-10 h-10 shrink-0 rounded-xl flex items-center justify-center text-lg ' +
+        (tone === 'danger' ? 'bg-rose-100 text-rose-600' : 'bg-amber-100 text-[#5c0612]');
+      icon.innerHTML = tone === 'danger'
+        ? '<i class="fa-solid fa-triangle-exclamation"></i>'
+        : '<i class="fa-solid fa-circle-question"></i>';
+
+      document.getElementById('confirmModal').classList.remove('hidden');
+      return new Promise((resolve) => { confirmResolver = resolve; });
+    }
+
+    function resolveConfirm(result) {
+      document.getElementById('confirmModal').classList.add('hidden');
+      if (confirmResolver) {
+        const resolve = confirmResolver;
+        confirmResolver = null;
+        resolve(result);
+      }
+    }
+
+    /* ---------- INVENTORY ---------- */
+    function switchView(view) {
+      document.getElementById('queueView').classList.toggle('hidden', view !== 'queue');
+      document.getElementById('inventoryView').classList.toggle('hidden', view !== 'inventory');
+      const active = 'px-4 py-2 rounded-xl text-xs font-bold border bg-[#5c0612] text-amber-200 border-[#5c0612]';
+      const idle = 'px-4 py-2 rounded-xl text-xs font-bold border bg-white text-[#5c0612] border-amber-300 hover:bg-amber-50';
+      document.getElementById('tabQueue').className = view === 'queue' ? active : idle;
+      document.getElementById('tabInventory').className = view === 'inventory' ? active : idle;
+    }
+
+    function toDateSafe(ts) {
+      return ts && typeof ts.toDate === 'function' ? ts.toDate() : null;
+    }
+
+    function getReleaseDate(r) {
+      return toDateSafe(r.completedAt) || toDateSafe(r.archivedAt) || toDateSafe(r.createdAt);
+    }
+
+    function formatShortDate(d) {
+      return d ? d.toLocaleDateString('en-PH', { year: 'numeric', month: 'short', day: 'numeric' }) : '-';
+    }
+
+    function renderInventory() {
+      const tbody = document.getElementById('inventoryTableBody');
+      if (!tbody) return;
+
+      const archived = requestsData.filter(r => r.archived);
+      document.getElementById('inventoryCount').innerText = archived.length;
+
+      const term = (document.getElementById('inventorySearch')?.value || '').toLowerCase().trim();
+      const month = document.getElementById('inventoryMonth')?.value || '';
+
+      let rows = archived;
+      if (term) {
+        rows = rows.filter(r => [r.reference, r.id, r.name, r.email, r.doc]
+          .some(v => String(v || '').toLowerCase().includes(term)));
+      }
+      if (month) {
+        rows = rows.filter(r => {
+          const d = getReleaseDate(r);
+          return d && `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}` === month;
+        });
+      }
+      rows = [...rows].sort((a, b) => (getReleaseDate(b) || 0) - (getReleaseDate(a) || 0));
+
+      document.getElementById('inventoryFooter').innerText = `${rows.length} of ${archived.length} archived request${archived.length === 1 ? '' : 's'} shown`;
+
+      if (rows.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="6" class="py-8 text-center text-slate-400 text-xs font-semibold">${
+          archived.length === 0
+            ? 'The inventory is empty. Completed requests you move here are kept for your records.'
+            : 'No archived requests match your search.'
+        }</td></tr>`;
+        return;
+      }
+
+      const isSuper = currentStaff && currentStaff.role === 'superadmin';
+      tbody.innerHTML = rows.map((req) => `
+        <tr class="hover:bg-amber-50/40 transition">
+          <td class="py-3 px-4">
+            <div class="font-mono text-[11px] font-black text-[#5c0612] tracking-wider">${esc(req.reference || '-')}</div>
+            <div class="font-bold text-slate-900 text-xs">${esc(req.name)}</div>
+            <div class="text-[11px] text-slate-400">ID: ${esc(req.id)}</div>
+          </td>
+          <td class="py-3 px-4 text-xs font-semibold text-slate-700">${esc(req.doc)}</td>
+          <td class="py-3 px-4 text-xs">
+            <div class="font-bold text-slate-700">${esc(req.payment)}</div>
+            ${typeof req.amount === 'number' ? `<div class="text-[11px] font-bold text-slate-600">₱${req.amount.toLocaleString('en-PH', { minimumFractionDigits: 2 })}</div>` : ''}
+            ${renderPaymentStatusBadge(req.paymentStatus)}
+          </td>
+          <td class="py-3 px-4 text-xs font-semibold text-slate-700">${esc(formatShortDate(getReleaseDate(req)))}</td>
+          <td class="py-3 px-4 text-[11px] text-slate-500">${esc(req.archivedBy || '-')}<br>${esc(formatShortDate(toDateSafe(req.archivedAt)))}</td>
+          <td class="py-3 px-4 text-center whitespace-nowrap space-x-1.5">
+            <button onclick="restoreFromInventory('${esc(req._docId)}')" class="bg-amber-100 hover:bg-amber-200 border border-amber-300 text-[#5c0612] text-xs px-3 py-1 rounded-lg transition font-bold">Restore</button>
+            ${isSuper ? `<button onclick="deleteRequestPermanently('${esc(req._docId)}')" title="Delete permanently" class="bg-rose-50 hover:bg-rose-100 border border-rose-200 text-rose-700 text-xs px-2.5 py-1 rounded-lg transition"><i class="fa-solid fa-trash-can"></i></button>` : ''}
+          </td>
+        </tr>`).join('');
+    }
+
+    async function moveSelectedToInventory() {
+      const req = getSelectedRequest();
+      if (!req || !currentStaff) return;
+      if (req.status !== 'Completed') {
+        alert('Only Completed requests can be moved to the Inventory.');
+        return;
+      }
+
+      const ok = await showConfirm({
+        title: 'Move to Inventory?',
+        message: "This request leaves the Active Queue and is kept in the Inventory. The student's tracking page keeps working, and you can restore it anytime.",
+        details: [['Reference', req.reference || '-'], ['Student', req.name], ['Document(s)', req.doc]],
+        confirmText: 'Move to Inventory',
+        tone: 'primary'
+      });
+      if (!ok) return;
+
+      const name = currentStaff.name || currentStaff.email;
+      requestsCollection.doc(req._docId).update({
+        archived: true,
+        archivedAt: firebase.firestore.FieldValue.serverTimestamp(),
+        archivedBy: name,
+        updatedBy: name,
+        updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+      }).then(() => {
+        closeProcessModal();
+        showToast('Moved to Inventory', 'success');
+      }).catch((error) => {
+        console.error('Error moving to inventory:', error);
+        alert('Could not move the request. Check your connection and try again.');
+      });
+    }
+
+    async function restoreFromInventory(docId) {
+      const req = getRequestByDocId(docId);
+      if (!req || !currentStaff) return;
+
+      const ok = await showConfirm({
+        title: 'Restore to the queue?',
+        message: 'This request goes back to the Active Queue, still marked Completed.',
+        details: [['Reference', req.reference || '-'], ['Student', req.name], ['Document(s)', req.doc]],
+        confirmText: 'Restore',
+        tone: 'primary'
+      });
+      if (!ok) return;
+
+      const name = currentStaff.name || currentStaff.email;
+      requestsCollection.doc(req._docId).update({
+        archived: false,
+        archivedAt: firebase.firestore.FieldValue.delete(),
+        archivedBy: firebase.firestore.FieldValue.delete(),
+        updatedBy: name,
+        updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+      }).then(() => {
+        showToast('Restored to the queue', 'success');
+      }).catch((error) => {
+        console.error('Error restoring request:', error);
+        alert('Could not restore the request. Check your connection and try again.');
+      });
+    }
+
+    async function deleteRequestPermanently(docId) {
+      if (!currentStaff || currentStaff.role !== 'superadmin') return false;
+      const req = getRequestByDocId(docId);
+      if (!req) return false;
+
+      const ok = await showConfirm({
+        title: 'Delete permanently?',
+        message: "This removes the request and its tracking page for good and cannot be undone. To keep a record, use Move to Inventory instead.",
+        details: [['Reference', req.reference || '-'], ['Student', req.name], ['Document(s)', req.doc], ['Status', req.status]],
+        confirmText: 'Delete Permanently',
+        tone: 'danger'
+      });
+      if (!ok) return false;
+
+      try {
+        const batch = db.batch();
+        batch.delete(requestsCollection.doc(req._docId));
+        if (req.reference) batch.delete(trackingCollection.doc(req.reference));
+        if (req.slot) batch.set(slotsCollection.doc(req.slot), { count: firebase.firestore.FieldValue.increment(-1) }, { merge: true });
+        await batch.commit();
+        showToast('Request deleted', 'success');
+        return true;
+      } catch (error) {
+        console.error('Error deleting request:', error);
+        alert('Could not delete the request. Check your connection and try again.');
+        return false;
+      }
+    }
+
+    async function deleteSelectedRequest() {
+      const req = getSelectedRequest();
+      if (!req) return;
+      const deleted = await deleteRequestPermanently(req._docId);
+      if (deleted) closeProcessModal();
     }
 
     /* ---------- ACCOUNTS (Super Admin) ---------- */
