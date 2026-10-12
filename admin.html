@@ -16,6 +16,12 @@
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
     :root { color-scheme: only light; }
     body { font-family: 'Inter', sans-serif; }
+    #printArea { display: none; }
+    @media print {
+      body > *:not(#printArea) { display: none !important; }
+      #printArea { display: block !important; }
+      @page { margin: 14mm; }
+    }
     .custom-scrollbar::-webkit-scrollbar { width: 6px; height: 6px; }
     .custom-scrollbar::-webkit-scrollbar-track { background: #fff8f0; }
     .custom-scrollbar::-webkit-scrollbar-thumb { background: #d4af37; border-radius: 4px; }
@@ -339,6 +345,13 @@
         <p id="notifyHelpText" class="text-[10px] text-slate-400 mt-1 text-center">Opens your email app with the student's Gmail, subject & message pre-filled.</p>
       </div>
 
+      <div class="pt-1">
+        <button onclick="printSelectedRequest()" class="w-full bg-white hover:bg-amber-50 text-[#5c0612] font-bold py-2.5 rounded-xl text-xs transition border border-amber-300 flex items-center justify-center gap-2">
+          <i class="fa-solid fa-print"></i>
+          <span>Print Request Summary</span>
+        </button>
+      </div>
+
       <div id="inventoryActionRow" class="hidden pt-1">
         <button onclick="moveSelectedToInventory()" class="w-full bg-[#5c0612] hover:bg-[#780a18] text-amber-200 font-bold py-2.5 rounded-xl text-xs transition border border-amber-500/30 flex items-center justify-center gap-2">
           <i class="fa-solid fa-box-archive"></i>
@@ -423,6 +436,8 @@
   </div>
 
   <div id="toast" class="hidden"></div>
+
+  <div id="printArea"></div>
 
   <footer class="bg-white border-t border-amber-200 py-4 text-center text-xs text-slate-600 font-medium">
     Pampanga State University Registrar Admin Receiver Portal
@@ -1257,6 +1272,88 @@
       }
     }
 
+    /* ---------- PRINTABLE SUMMARY ---------- */
+    function buildSlipHtml({ title, subtitle, reference, rows, notes = [], signatures = false }) {
+      const logo = document.querySelector('img[alt="Pampanga State University Seal"]');
+      const logoHtml = logo ? `<img src="${logo.src}" alt="" style="width:62px;height:62px;border-radius:50%;">` : '';
+
+      const rowHtml = rows
+        .filter(r => r && r[1] !== undefined && r[1] !== null && String(r[1]).trim() !== '')
+        .map(([label, value]) => `<tr><td style="padding:7px 10px;border-bottom:1px solid #e5d9c3;color:#555;width:36%;vertical-align:top;">${esc(label)}</td><td style="padding:7px 10px;border-bottom:1px solid #e5d9c3;font-weight:bold;vertical-align:top;">${esc(value)}</td></tr>`)
+        .join('');
+
+      const notesHtml = notes.length
+        ? `<div style="margin-top:16px;padding:10px 12px;background:#fbf6ea;border:1px solid #e5d9c3;border-radius:6px;font-size:12px;line-height:1.55;">${notes.map(n => `<div>&bull; ${esc(n)}</div>`).join('')}</div>`
+        : '';
+
+      const sigHtml = signatures
+        ? `<table style="width:100%;margin-top:52px;border-collapse:collapse;font-size:12px;"><tr><td style="width:46%;border-top:1px solid #111;padding-top:5px;text-align:center;">Released by (Registrar) / Date</td><td style="width:8%;"></td><td style="width:46%;border-top:1px solid #111;padding-top:5px;text-align:center;">Received by (Student) / Date</td></tr></table>`
+        : '';
+
+      return `
+        <div style="font-family:Arial,Helvetica,sans-serif;color:#111;max-width:720px;margin:0 auto;">
+          <table style="width:100%;border-collapse:collapse;border-bottom:3px solid #5c0612;"><tr>
+            <td style="width:76px;padding:0 0 10px;vertical-align:middle;">${logoHtml}</td>
+            <td style="padding:0 0 10px;vertical-align:middle;">
+              <div style="font-size:19px;font-weight:bold;color:#5c0612;">Pampanga State University</div>
+              <div style="font-size:12px;color:#444;">Office of the University Registrar</div>
+            </td>
+          </tr></table>
+          <div style="font-size:17px;font-weight:bold;margin:16px 0 2px;">${esc(title)}</div>
+          <div style="font-size:11px;color:#666;">${esc(subtitle)}</div>
+          <div style="margin:14px 0;padding:12px;border:2px solid #5c0612;border-radius:8px;text-align:center;">
+            <div style="font-size:10px;letter-spacing:2px;text-transform:uppercase;color:#5c0612;">Reference Number</div>
+            <div style="font-family:'Courier New',monospace;font-size:28px;font-weight:bold;letter-spacing:4px;">${esc(reference)}</div>
+          </div>
+          <table style="width:100%;border-collapse:collapse;font-size:13px;">${rowHtml}</table>
+          ${notesHtml}${sigHtml}
+        </div>`;
+    }
+
+    function printSlip(html) {
+      const area = document.getElementById('printArea');
+      area.innerHTML = html;
+      const cleanup = () => { area.innerHTML = ''; window.removeEventListener('afterprint', cleanup); };
+      window.addEventListener('afterprint', cleanup);
+      window.print();
+    }
+
+    function printRequestSummary(req) {
+      if (!req) return;
+      const money = typeof req.amount === 'number'
+        ? `PHP ${req.amount.toLocaleString('en-PH', { minimumFractionDigits: 2 })}` : '';
+      const when = (ts) => { const d = toDateSafe(ts); return d ? d.toLocaleString('en-PH') : ''; };
+      const printer = currentStaff ? (currentStaff.name || currentStaff.email) : '';
+
+      printSlip(buildSlipHtml({
+        title: 'Request Summary',
+        subtitle: `Registrar copy${req.archived ? ' (Inventory)' : ''} - printed ${new Date().toLocaleString('en-PH')}${printer ? ' by ' + printer : ''}`,
+        reference: req.reference || 'No reference',
+        rows: [
+          ['Status', req.status],
+          ['Student name', req.name],
+          ['Student ID', req.id],
+          ['Course / year', [req.course, req.year].filter(Boolean).join(' - ')],
+          ['Email', req.email],
+          ['Document(s)', req.doc],
+          ['Purpose', req.purpose],
+          ['Submitted', when(req.createdAt)],
+          ['Pickup date', req.slot],
+          ['Payment option', req.payment],
+          ['Amount', money],
+          ['Payment status', req.paymentStatus],
+          ['GCash reference no.', req.refNo],
+          ['Released on', when(req.completedAt)],
+          ['Last updated by', req.updatedBy]
+        ],
+        signatures: true
+      }));
+    }
+
+    function printSelectedRequest() {
+      printRequestSummary(getSelectedRequest());
+    }
+
     /* ---------- INVENTORY ---------- */
     function switchView(view) {
       document.getElementById('queueView').classList.toggle('hidden', view !== 'queue');
@@ -1330,6 +1427,7 @@
           <td class="py-3 px-4 text-xs font-semibold text-slate-700">${esc(formatShortDate(getReleaseDate(req)))}</td>
           <td class="py-3 px-4 text-[11px] text-slate-500">${esc(req.archivedBy || '-')}<br>${esc(formatShortDate(toDateSafe(req.archivedAt)))}</td>
           <td class="py-3 px-4 text-center whitespace-nowrap space-x-1.5">
+            <button onclick="printRequestSummary(getRequestByDocId('${esc(req._docId)}'))" title="Print summary" class="bg-white hover:bg-amber-50 border border-amber-300 text-[#5c0612] text-xs px-2.5 py-1 rounded-lg transition"><i class="fa-solid fa-print"></i></button>
             <button onclick="restoreFromInventory('${esc(req._docId)}')" class="bg-amber-100 hover:bg-amber-200 border border-amber-300 text-[#5c0612] text-xs px-3 py-1 rounded-lg transition font-bold">Restore</button>
             ${isSuper ? `<button onclick="deleteRequestPermanently('${esc(req._docId)}')" title="Delete permanently" class="bg-rose-50 hover:bg-rose-100 border border-rose-200 text-rose-700 text-xs px-2.5 py-1 rounded-lg transition"><i class="fa-solid fa-trash-can"></i></button>` : ''}
           </td>
