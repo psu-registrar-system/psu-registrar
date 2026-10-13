@@ -9,6 +9,7 @@
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://www.gstatic.com/firebasejs/10.13.2/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.13.2/firebase-firestore-compat.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <style>
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
@@ -308,7 +309,7 @@
         <button id="copyRefBtn" onclick="copyReference()" class="text-[11px] font-bold px-3 py-1.5 rounded-lg bg-white/15 hover:bg-white/25 text-amber-100 transition border border-white/20">
           <i class="fa-regular fa-copy mr-1"></i>Copy
         </button>
-        <p class="text-[11px] text-amber-200/80">Keep this number. Tap "Track My Request" on the home page anytime to check your status.</p>
+        <p class="text-[11px] text-amber-200/80">Keep this number. It is also saved on this device: tap "Track My Request" on the home page anytime to check your status.</p>
         <p class="text-[11px] text-amber-200/80">Updates are emailed to <strong id="summaryEmail" class="text-amber-100"></strong>. If you do not see them, check your spam or junk folder.</p>
       </div>
 
@@ -323,9 +324,14 @@
         <div id="summaryInstructions" class="pt-1 text-slate-600 leading-relaxed italic"></div>
       </div>
 
-      <button onclick="printConfirmation()" class="w-full bg-white hover:bg-amber-50 text-[#5c0612] font-bold py-3 rounded-xl transition border border-amber-300">
-        <i class="fa-solid fa-print mr-2"></i>Print / Save as PDF
-      </button>
+      <div class="grid grid-cols-2 gap-2">
+        <button onclick="printConfirmation()" class="bg-white hover:bg-amber-50 text-[#5c0612] font-bold py-3 rounded-xl transition border border-amber-300 text-sm">
+          <i class="fa-solid fa-print mr-2"></i>Print / PDF
+        </button>
+        <button onclick="saveConfirmationImage()" class="bg-white hover:bg-amber-50 text-[#5c0612] font-bold py-3 rounded-xl transition border border-amber-300 text-sm">
+          <i class="fa-solid fa-image mr-2"></i>Save as Image
+        </button>
+      </div>
 
       <button onclick="resetStudentFlow()" class="w-full bg-amber-100 hover:bg-amber-200 text-[#5c0612] font-bold py-3 rounded-xl transition border border-amber-300">
         Submit Another Request
@@ -345,6 +351,14 @@
           Check Status
         </button>
       </form>
+
+      <div id="trackRecent" class="hidden space-y-2">
+        <div class="flex items-center justify-between">
+          <span class="text-[11px] font-bold uppercase tracking-wider text-[#5c0612]">Saved on this device</span>
+          <button type="button" onclick="clearRecentRefs()" class="text-[11px] font-semibold text-slate-400 hover:text-slate-600 underline">Clear</button>
+        </div>
+        <div id="trackRecentList" class="space-y-2"></div>
+      </div>
 
       <p id="trackMessage" class="hidden text-xs font-semibold rounded-xl px-3 py-2 border bg-rose-50 text-rose-700 border-rose-200"></p>
 
@@ -368,9 +382,14 @@
             <div class="flex justify-between gap-3"><span class="text-slate-500">Last Updated:</span><span id="trackUpdated" class="font-semibold text-slate-700"></span></div>
           </div>
         </div>
-        <button onclick="printTrackStatus()" class="w-full bg-white hover:bg-amber-50 text-[#5c0612] font-bold py-3 rounded-xl transition border border-amber-300">
-          <i class="fa-solid fa-print mr-2"></i>Print / Save as PDF
+      <div class="grid grid-cols-2 gap-2">
+        <button onclick="printTrackStatus()" class="bg-white hover:bg-amber-50 text-[#5c0612] font-bold py-3 rounded-xl transition border border-amber-300 text-sm">
+          <i class="fa-solid fa-print mr-2"></i>Print / PDF
         </button>
+        <button onclick="saveTrackImage()" class="bg-white hover:bg-amber-50 text-[#5c0612] font-bold py-3 rounded-xl transition border border-amber-300 text-sm">
+          <i class="fa-solid fa-image mr-2"></i>Save as Image
+        </button>
+      </div>
         <p class="text-[11px] text-slate-400 text-center">This page updates by itself while it is open.</p>
       </div>
 
@@ -704,6 +723,7 @@
             paymentStatus: newRequestPayload.paymentStatus, submittedAt: new Date()
           };
           document.getElementById('summaryReference').innerText = issuedReference;
+          addRecentRef({ reference: issuedReference, doc: studentState.doc, slot: studentState.slotDate, at: Date.now() });
           document.getElementById('summaryEmail').innerText = studentState.email;
           document.getElementById('summaryStudent').innerText = `${studentState.name} (${studentState.id})`;
           document.getElementById('summaryDoc').innerText = studentState.doc;
@@ -796,9 +816,41 @@
       window.print();
     }
 
-    function printConfirmation() {
+    // Saves a slip/report as a PNG image (uses the html2canvas library)
+    async function saveHtmlAsImage(html, filename) {
+      if (!window.html2canvas) {
+        alert('Saving as an image is not available right now. Please use Print / Save as PDF instead.');
+        return false;
+      }
+      const holder = document.createElement('div');
+      holder.style.cssText = 'position:absolute;left:-10000px;top:0;width:794px;padding:24px;box-sizing:border-box;background:#ffffff;';
+      holder.innerHTML = html;
+      document.body.appendChild(holder);
+      try {
+        const canvas = await window.html2canvas(holder, { scale: 2, backgroundColor: '#ffffff', useCORS: true });
+        const blob = await new Promise((resolve) => canvas.toBlob(resolve, 'image/png'));
+        if (!blob) throw new Error('The image came out empty');
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = filename;
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        setTimeout(() => URL.revokeObjectURL(url), 5000);
+        return true;
+      } catch (error) {
+        console.error('Save as image failed:', error);
+        alert('Could not save the image on this browser. Please use Print / Save as PDF instead.');
+        return false;
+      } finally {
+        holder.remove();
+      }
+    }
+
+    function confirmationSlipHtml() {
       const s = lastSubmittedSlip;
-      if (!s) return;
+      if (!s) return null;
       const money = `PHP ${Number(s.amount).toLocaleString('en-PH', { minimumFractionDigits: 2 })}`;
 
       const notes = ['Bring your PSU Student ID when you claim your documents.'];
@@ -807,7 +859,7 @@
         : 'Pay at the Cashier window on your pickup date before claiming your documents.');
       notes.push(`Track your request anytime: open ${pageUrl()}, tap "Track My Request" and enter your reference number.`);
 
-      printSlip(buildSlipHtml({
+      return buildSlipHtml({
         title: 'Document Request Confirmation',
         subtitle: `Student copy - submitted ${s.submittedAt.toLocaleString('en-PH')}`,
         reference: s.reference,
@@ -824,12 +876,12 @@
           ['GCash reference no.', s.refNo]
         ],
         notes
-      }));
+      });
     }
 
-    function printTrackStatus() {
+    function trackSlipHtml() {
       const t = lastTrackData;
-      if (!t) return;
+      if (!t) return null;
       const paymentText = {
         'Paid': 'Paid',
         'Awaiting Verification': 'Submitted - awaiting verification',
@@ -837,7 +889,7 @@
       };
       const updated = t.updatedAt && t.updatedAt.toDate ? t.updatedAt.toDate().toLocaleString('en-PH') : '';
 
-      printSlip(buildSlipHtml({
+      return buildSlipHtml({
         title: 'Request Status',
         subtitle: `Student copy - status as of ${new Date().toLocaleString('en-PH')}`,
         reference: t.reference,
@@ -852,7 +904,27 @@
           'Bring your PSU Student ID when you claim your documents.',
           'For your privacy, your name and other personal details are not shown on the tracking page.'
         ]
-      }));
+      });
+    }
+
+    function printConfirmation() {
+      const html = confirmationSlipHtml();
+      if (html) printSlip(html);
+    }
+
+    function printTrackStatus() {
+      const html = trackSlipHtml();
+      if (html) printSlip(html);
+    }
+
+    function saveConfirmationImage() {
+      const html = confirmationSlipHtml();
+      if (html) return saveHtmlAsImage(html, `request-${lastSubmittedSlip.reference}.png`);
+    }
+
+    function saveTrackImage() {
+      const html = trackSlipHtml();
+      if (html) return saveHtmlAsImage(html, `status-${lastTrackData.reference}.png`);
     }
 
     function copyReference() {
@@ -864,8 +936,53 @@
       }
     }
 
+    /* ---------- REFERENCES SAVED ON THIS DEVICE ---------- */
+    const RECENT_KEY = 'psu_recent_requests';
+
+    function getRecentRefs() {
+      try {
+        const list = JSON.parse(localStorage.getItem(RECENT_KEY) || '[]');
+        return Array.isArray(list) ? list : [];
+      } catch (e) {
+        return [];
+      }
+    }
+
+    function addRecentRef(entry) {
+      try {
+        const list = getRecentRefs().filter(x => x.reference !== entry.reference);
+        list.unshift(entry);
+        localStorage.setItem(RECENT_KEY, JSON.stringify(list.slice(0, 5)));
+      } catch (e) {
+        // storage may be blocked (private mode / in-app browsers); the screen still shows the reference
+      }
+    }
+
+    function clearRecentRefs() {
+      try { localStorage.removeItem(RECENT_KEY); } catch (e) {}
+      renderRecentRefs();
+    }
+
+    function renderRecentRefs() {
+      const box = document.getElementById('trackRecent');
+      const list = getRecentRefs();
+      if (list.length === 0) { box.classList.add('hidden'); return; }
+      box.classList.remove('hidden');
+      document.getElementById('trackRecentList').innerHTML = list.map(x => `
+        <button type="button" onclick="trackSavedReference('${esc(x.reference)}')" class="w-full text-left bg-amber-50/60 hover:bg-amber-100/70 border border-amber-200 rounded-xl px-3 py-2.5 transition">
+          <div class="font-mono font-black text-[#5c0612] tracking-widest text-sm">${esc(x.reference)}</div>
+          <div class="text-[11px] text-slate-500 truncate">${esc(x.doc || '')}${x.at ? ' - ' + esc(new Date(x.at).toLocaleDateString('en-PH')) : ''}</div>
+        </button>`).join('');
+    }
+
+    function trackSavedReference(ref) {
+      document.getElementById('trackRefInput').value = ref;
+      handleTrackRequest({ preventDefault() {} });
+    }
+
     function openTrackPage() {
       stopTracking();
+      renderRecentRefs();
       document.getElementById('trackRefInput').value = '';
       document.getElementById('trackResult').classList.add('hidden');
       document.getElementById('trackMessage').classList.add('hidden');
