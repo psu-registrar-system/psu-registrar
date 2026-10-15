@@ -27,6 +27,10 @@
   </style>
 </head>
 <body class="min-h-screen flex flex-col justify-between text-slate-800 bg-amber-50/30 antialiased">
+  <div id="inAppNotice" class="hidden bg-amber-100 border-b border-amber-300 text-[#5c0612] text-xs font-semibold px-4 py-2.5 flex items-start justify-between gap-3">
+    <span>You are viewing this inside another app. For printing and saving images, open this page in Chrome: tap the menu (&#8942; or &bull;&bull;&bull;), then &quot;Open in browser&quot;.</span>
+    <button onclick="dismissInAppNotice()" class="font-black text-base leading-none">&times;</button>
+  </div>
 
   <!-- TOP NAVIGATION HEADER -->
   <header class="bg-[#5c0612] text-white shadow-xl sticky top-0 z-50 border-b-2 border-[#d4af37]">
@@ -313,6 +317,16 @@
         <p class="text-[11px] text-amber-200/80">Updates are emailed to <strong id="summaryEmail" class="text-amber-100"></strong>. If you do not see them, check your spam or junk folder.</p>
       </div>
 
+      <div class="grid grid-cols-2 gap-2">
+        <button onclick="printConfirmation()" class="bg-white hover:bg-amber-50 text-[#5c0612] font-bold py-3 rounded-xl transition border border-amber-300 text-sm">
+          <i class="fa-solid fa-print mr-2"></i>Print / PDF
+        </button>
+        <button onclick="saveConfirmationImage()" class="bg-white hover:bg-amber-50 text-[#5c0612] font-bold py-3 rounded-xl transition border border-amber-300 text-sm">
+          <i class="fa-solid fa-image mr-2"></i>Save as Image
+        </button>
+      </div>
+      <p class="text-[10px] text-slate-400 -mt-3">If printing or saving does not work, open this page in Chrome.</p>
+
       <div class="bg-amber-50/40 p-5 rounded-2xl border border-amber-200 text-xs text-left space-y-3">
         <div class="flex justify-between border-b border-amber-200/60 pb-2"><span class="text-slate-500">Student ID & Name:</span> <span id="summaryStudent" class="font-bold text-slate-900"></span></div>
         <div class="flex justify-between border-b border-amber-200/60 pb-2"><span class="text-slate-500">Requested Document(s):</span> <span id="summaryDoc" class="font-bold text-slate-900"></span></div>
@@ -322,15 +336,6 @@
         <div class="flex justify-between border-b border-amber-200/60 pb-2"><span class="text-slate-500">Payment Status:</span> <span id="summaryPaymentStatus" class="font-bold text-amber-700"></span></div>
         <div id="summaryRefRow" class="flex justify-between border-b border-amber-200/60 pb-2"><span class="text-slate-500">GCash Ref No:</span> <span id="summaryRefNo" class="font-mono font-bold text-emerald-700"></span></div>
         <div id="summaryInstructions" class="pt-1 text-slate-600 leading-relaxed italic"></div>
-      </div>
-
-      <div class="grid grid-cols-2 gap-2">
-        <button onclick="printConfirmation()" class="bg-white hover:bg-amber-50 text-[#5c0612] font-bold py-3 rounded-xl transition border border-amber-300 text-sm">
-          <i class="fa-solid fa-print mr-2"></i>Print / PDF
-        </button>
-        <button onclick="saveConfirmationImage()" class="bg-white hover:bg-amber-50 text-[#5c0612] font-bold py-3 rounded-xl transition border border-amber-300 text-sm">
-          <i class="fa-solid fa-image mr-2"></i>Save as Image
-        </button>
       </div>
 
       <button onclick="resetStudentFlow()" class="w-full bg-amber-100 hover:bg-amber-200 text-[#5c0612] font-bold py-3 rounded-xl transition border border-amber-300">
@@ -360,6 +365,18 @@
         <div id="trackRecentList" class="space-y-2"></div>
       </div>
 
+      <div class="space-y-2">
+        <button type="button" onclick="toggleFindPanel()" class="text-[11px] font-bold text-[#5c0612] underline">Lost your reference number?</button>
+        <div id="findPanel" class="hidden space-y-2 bg-amber-50/50 border border-amber-200 rounded-xl p-3">
+          <p class="text-[11px] text-slate-500">Enter the Student ID and email you used when you submitted your request. We will list your reference numbers.</p>
+          <input type="text" id="findIdInput" inputmode="numeric" autocomplete="off" placeholder="Student ID" class="w-full p-2.5 border border-amber-200 rounded-xl text-sm focus:ring-2 focus:ring-[#5c0612] focus:outline-none bg-white">
+          <input type="email" id="findEmailInput" autocomplete="off" placeholder="Email address" class="w-full p-2.5 border border-amber-200 rounded-xl text-sm focus:ring-2 focus:ring-[#5c0612] focus:outline-none bg-white">
+          <button type="button" id="findBtn" onclick="findMyReferences()" class="w-full bg-[#5c0612] hover:bg-[#780a18] text-amber-200 font-bold py-2.5 rounded-xl text-sm transition border border-amber-500/30 disabled:opacity-60">Find My Reference</button>
+          <p id="findMessage" class="hidden text-xs font-semibold rounded-lg px-3 py-2 border"></p>
+          <div id="findResults" class="space-y-2"></div>
+        </div>
+      </div>
+
       <p id="trackMessage" class="hidden text-xs font-semibold rounded-xl px-3 py-2 border bg-rose-50 text-rose-700 border-rose-200"></p>
 
       <div id="trackResult" class="hidden space-y-4">
@@ -373,6 +390,13 @@
             <div id="trackStep0" class="flex-1 text-center py-2 rounded-lg border">Pending</div>
             <div id="trackStep1" class="flex-1 text-center py-2 rounded-lg border">Ready for Pickup</div>
             <div id="trackStep2" class="flex-1 text-center py-2 rounded-lg border">Completed</div>
+          </div>
+
+          <div id="trackNotice" class="hidden rounded-xl border border-amber-300 bg-amber-50 px-3 py-2.5 text-xs space-y-1">
+            <div class="font-black text-amber-800"><i class="fa-solid fa-triangle-exclamation mr-1.5"></i>Pickup date changed</div>
+            <div id="trackNoticeDates" class="font-bold text-slate-800"></div>
+            <div id="trackNoticeReason" class="text-slate-600"></div>
+            <div id="trackNoticeWhen" class="text-[10px] text-slate-400"></div>
           </div>
 
           <div class="text-xs space-y-2.5">
@@ -413,6 +437,22 @@
       <button onclick="closeCustomAlert()" class="w-full bg-[#5c0612] hover:bg-[#780a18] text-amber-200 font-bold py-2.5 rounded-xl text-xs transition">
         Understood
       </button>
+    </div>
+  </div>
+
+  <!-- IMAGE PREVIEW (works in every browser: download button, or press and hold the image) -->
+  <div id="imagePreviewModal" class="fixed inset-0 bg-slate-950/70 hidden z-[80] flex items-center justify-center p-4">
+    <div class="bg-white rounded-2xl shadow-2xl max-w-md w-full p-4 space-y-3 border border-amber-200 max-h-[95vh] overflow-y-auto overscroll-contain">
+      <div class="flex justify-between items-center">
+        <h3 class="text-sm font-bold text-[#5c0612]">Your Image</h3>
+        <button onclick="closeImagePreview()" class="text-slate-400 hover:text-slate-600 text-xl font-bold">&times;</button>
+      </div>
+      <img id="imagePreviewImg" alt="Saved summary" class="w-full rounded-lg border border-amber-200">
+      <p class="text-[11px] text-slate-500">Tap <strong>Download</strong>. If nothing downloads, press and hold the image, then choose Save image.</p>
+      <div class="grid grid-cols-2 gap-2">
+        <a id="imagePreviewDownload" download="summary.png" class="text-center bg-[#5c0612] hover:bg-[#780a18] text-amber-200 font-bold py-2.5 rounded-xl text-xs transition">Download</a>
+        <button onclick="closeImagePreview()" class="bg-amber-100 hover:bg-amber-200 text-[#5c0612] font-bold py-2.5 rounded-xl text-xs transition">Close</button>
+      </div>
     </div>
   </div>
 
@@ -464,6 +504,7 @@
     };
 
     window.onload = function() {
+      showInAppNotice();
       setupDateLimits();
       initRequestWindowSync();
     };
@@ -694,6 +735,7 @@
       const counterRef = db.collection('counters').doc('requests');
       const slotRef = db.collection('slots').doc(studentState.slotDate);
       let issuedReference = '';
+      const lookupKey = lookupKeyFor(studentState.id, studentState.email);
 
       db.runTransaction(async (tx) => {
         const counterSnap = await tx.get(counterRef);
@@ -702,7 +744,7 @@
         issuedReference = reference;
 
         tx.set(counterRef, { last: seq });
-        tx.set(requestsCollection.doc(reference), { ...newRequestPayload, reference, seq });
+        tx.set(requestsCollection.doc(reference), { ...newRequestPayload, reference, seq, lookupKey });
         tx.set(db.collection('tracking').doc(reference), {
           reference,
           status: 'Pending',
@@ -724,6 +766,10 @@
           };
           document.getElementById('summaryReference').innerText = issuedReference;
           addRecentRef({ reference: issuedReference, doc: studentState.doc, slot: studentState.slotDate, at: Date.now() });
+          // lets the student find this reference later with their Student ID + email (not required for the submission itself)
+          db.collection('lookup').doc(lookupKey).collection('refs').doc(issuedReference)
+            .set({ reference: issuedReference, createdAt: firebase.firestore.FieldValue.serverTimestamp() })
+            .catch((error) => console.warn('Could not save the lookup entry:', error));
           document.getElementById('summaryEmail').innerText = studentState.email;
           document.getElementById('summaryStudent').innerText = `${studentState.name} (${studentState.id})`;
           document.getElementById('summaryDoc').innerText = studentState.doc;
@@ -816,7 +862,15 @@
       window.print();
     }
 
-    // Saves a slip/report as a PNG image (uses the html2canvas library)
+    // Saves a slip/report as a PNG image (uses the html2canvas library) and shows it in a preview
+    let previewUrl = null;
+
+    function closeImagePreview() {
+      document.getElementById('imagePreviewModal').classList.add('hidden');
+      document.getElementById('imagePreviewImg').removeAttribute('src');
+      if (previewUrl) { URL.revokeObjectURL(previewUrl); previewUrl = null; }
+    }
+
     async function saveHtmlAsImage(html, filename) {
       if (!window.html2canvas) {
         alert('Saving as an image is not available right now. Please use Print / Save as PDF instead.');
@@ -830,14 +884,13 @@
         const canvas = await window.html2canvas(holder, { scale: 2, backgroundColor: '#ffffff', useCORS: true });
         const blob = await new Promise((resolve) => canvas.toBlob(resolve, 'image/png'));
         if (!blob) throw new Error('The image came out empty');
-        const url = URL.createObjectURL(blob);
-        const link = document.createElement('a');
-        link.href = url;
+        if (previewUrl) URL.revokeObjectURL(previewUrl);
+        previewUrl = URL.createObjectURL(blob);
+        document.getElementById('imagePreviewImg').src = previewUrl;
+        const link = document.getElementById('imagePreviewDownload');
+        link.href = previewUrl;
         link.download = filename;
-        document.body.appendChild(link);
-        link.click();
-        link.remove();
-        setTimeout(() => URL.revokeObjectURL(url), 5000);
+        document.getElementById('imagePreviewModal').classList.remove('hidden');
         return true;
       } catch (error) {
         console.error('Save as image failed:', error);
@@ -846,6 +899,21 @@
       } finally {
         holder.remove();
       }
+    }
+
+    function isInAppBrowser() {
+      return /FBAN|FBAV|FB_IAB|FBIOS|Instagram|Line\/|MicroMessenger|Snapchat|musical_ly|TikTok/i.test((typeof navigator !== 'undefined' && navigator.userAgent) || '');
+    }
+
+    function showInAppNotice() {
+      if (!isInAppBrowser()) return;
+      try { if (sessionStorage.getItem('psu_inapp_dismissed')) return; } catch (e) {}
+      document.getElementById('inAppNotice').classList.remove('hidden');
+    }
+
+    function dismissInAppNotice() {
+      document.getElementById('inAppNotice').classList.add('hidden');
+      try { sessionStorage.setItem('psu_inapp_dismissed', '1'); } catch (e) {}
     }
 
     function confirmationSlipHtml() {
@@ -897,6 +965,7 @@
           ['Status', t.status],
           ['Document(s)', (t.docs || []).join(', ')],
           ['Pickup date', t.slot],
+          ['Pickup date change', t.slotChange && t.slotChange.to ? `${t.slotChange.from || '-'} to ${t.slotChange.to}${t.slotChange.reason ? ' - ' + t.slotChange.reason : ''}` : ''],
           ['Payment', paymentText[t.paymentStatus] || t.paymentStatus],
           ['Last updated', updated]
         ],
@@ -980,9 +1049,131 @@
       handleTrackRequest({ preventDefault() {} });
     }
 
+    /* ---------- FIND MY REFERENCE (Student ID + email) ---------- */
+    function sha256Hex(str) {
+      const K = new Uint32Array([
+        0x428a2f98, 0x71374491, 0xb5c0fbcf, 0xe9b5dba5, 0x3956c25b, 0x59f111f1, 0x923f82a4, 0xab1c5ed5,
+        0xd807aa98, 0x12835b01, 0x243185be, 0x550c7dc3, 0x72be5d74, 0x80deb1fe, 0x9bdc06a7, 0xc19bf174,
+        0xe49b69c1, 0xefbe4786, 0x0fc19dc6, 0x240ca1cc, 0x2de92c6f, 0x4a7484aa, 0x5cb0a9dc, 0x76f988da,
+        0x983e5152, 0xa831c66d, 0xb00327c8, 0xbf597fc7, 0xc6e00bf3, 0xd5a79147, 0x06ca6351, 0x14292967,
+        0x27b70a85, 0x2e1b2138, 0x4d2c6dfc, 0x53380d13, 0x650a7354, 0x766a0abb, 0x81c2c92e, 0x92722c85,
+        0xa2bfe8a1, 0xa81a664b, 0xc24b8b70, 0xc76c51a3, 0xd192e819, 0xd6990624, 0xf40e3585, 0x106aa070,
+        0x19a4c116, 0x1e376c08, 0x2748774c, 0x34b0bcb5, 0x391c0cb3, 0x4ed8aa4a, 0x5b9cca4f, 0x682e6ff3,
+        0x748f82ee, 0x78a5636f, 0x84c87814, 0x8cc70208, 0x90befffa, 0xa4506ceb, 0xbef9a3f7, 0xc67178f2
+      ]);
+      const H = new Uint32Array([0x6a09e667, 0xbb67ae85, 0x3c6ef372, 0xa54ff53a, 0x510e527f, 0x9b05688c, 0x1f83d9ab, 0x5be0cd19]);
+
+      const bytes = typeof TextEncoder !== 'undefined'
+        ? new TextEncoder().encode(str)
+        : Uint8Array.from(unescape(encodeURIComponent(str)), c => c.charCodeAt(0));
+      const len = bytes.length;
+      const total = ((len + 9 + 63) >> 6) << 6;
+      const buf = new Uint8Array(total);
+      buf.set(bytes);
+      buf[len] = 0x80;
+      const view = new DataView(buf.buffer);
+      view.setUint32(total - 8, Math.floor((len * 8) / 0x100000000));
+      view.setUint32(total - 4, (len * 8) >>> 0);
+
+      const w = new Uint32Array(64);
+      for (let off = 0; off < total; off += 64) {
+        for (let i = 0; i < 16; i++) w[i] = view.getUint32(off + i * 4);
+        for (let i = 16; i < 64; i++) {
+          const s0 = ((w[i - 15] >>> 7) | (w[i - 15] << 25)) ^ ((w[i - 15] >>> 18) | (w[i - 15] << 14)) ^ (w[i - 15] >>> 3);
+          const s1 = ((w[i - 2] >>> 17) | (w[i - 2] << 15)) ^ ((w[i - 2] >>> 19) | (w[i - 2] << 13)) ^ (w[i - 2] >>> 10);
+          w[i] = (w[i - 16] + s0 + w[i - 7] + s1) >>> 0;
+        }
+        let a = H[0], b = H[1], c = H[2], d = H[3], e = H[4], f = H[5], g = H[6], h = H[7];
+        for (let i = 0; i < 64; i++) {
+          const S1 = ((e >>> 6) | (e << 26)) ^ ((e >>> 11) | (e << 21)) ^ ((e >>> 25) | (e << 7));
+          const ch = (e & f) ^ (~e & g);
+          const t1 = (h + S1 + ch + K[i] + w[i]) >>> 0;
+          const S0 = ((a >>> 2) | (a << 30)) ^ ((a >>> 13) | (a << 19)) ^ ((a >>> 22) | (a << 10));
+          const maj = (a & b) ^ (a & c) ^ (b & c);
+          const t2 = (S0 + maj) >>> 0;
+          h = g; g = f; f = e; e = (d + t1) >>> 0; d = c; c = b; b = a; a = (t1 + t2) >>> 0;
+        }
+        H[0] = (H[0] + a) >>> 0; H[1] = (H[1] + b) >>> 0; H[2] = (H[2] + c) >>> 0; H[3] = (H[3] + d) >>> 0;
+        H[4] = (H[4] + e) >>> 0; H[5] = (H[5] + f) >>> 0; H[6] = (H[6] + g) >>> 0; H[7] = (H[7] + h) >>> 0;
+      }
+      return Array.from(H, x => x.toString(16).padStart(8, '0')).join('');
+    }
+
+    // Both the Student ID and the email are needed to rebuild this key, and it is not reversible
+    function lookupKeyFor(studentId, email) {
+      const id = String(studentId || '').replace(/[\s-]/g, '');
+      const mail = String(email || '').trim().toLowerCase();
+      return sha256Hex('psu-registrar-lookup|' + id + '|' + mail);
+    }
+
+    function toggleFindPanel() {
+      document.getElementById('findPanel').classList.toggle('hidden');
+    }
+
+    function resetFindPanel() {
+      document.getElementById('findPanel').classList.add('hidden');
+      document.getElementById('findMessage').classList.add('hidden');
+      document.getElementById('findResults').innerHTML = '';
+    }
+
+    function showFindMessage(text, tone) {
+      const el = document.getElementById('findMessage');
+      el.innerText = text;
+      el.className = 'text-xs font-semibold rounded-lg px-3 py-2 border ' +
+        (tone === 'error' ? 'bg-rose-50 text-rose-700 border-rose-200' : 'bg-amber-50 text-amber-800 border-amber-200');
+    }
+
+    async function findMyReferences() {
+      const id = document.getElementById('findIdInput').value.trim();
+      const email = document.getElementById('findEmailInput').value.trim();
+      const results = document.getElementById('findResults');
+      results.innerHTML = '';
+
+      if (!id || !/^\S+@\S+\.\S+$/.test(email)) {
+        showFindMessage('Enter your Student ID and a valid email address.', 'error');
+        return;
+      }
+
+      const btn = document.getElementById('findBtn');
+      btn.disabled = true;
+      showFindMessage('Searching...', 'info');
+
+      try {
+        const key = lookupKeyFor(id, email);
+        const snap = await db.collection('lookup').doc(key).collection('refs').get();
+        const refs = snap.docs.map(d => d.id).slice(0, 10);
+        const tracked = await Promise.all(refs.map(r => db.collection('tracking').doc(r).get()));
+        const found = tracked.filter(d => d.exists).map(d => d.data());
+
+        if (found.length === 0) {
+          showFindMessage('No request found. Check that you typed the same Student ID and email you used when submitting. If you still cannot find it, ask the Registrar and show your student ID.', 'error');
+          return;
+        }
+
+        document.getElementById('findMessage').classList.add('hidden');
+        found.forEach(t => addRecentRef({ reference: t.reference, doc: (t.docs || []).join(', '), slot: t.slot, at: Date.now() }));
+        renderRecentRefs();
+
+        results.innerHTML = found.map(t => `
+          <button type="button" onclick="trackSavedReference('${esc(t.reference)}')" class="w-full text-left bg-white hover:bg-amber-100/70 border border-amber-200 rounded-xl px-3 py-2.5 transition">
+            <div class="flex items-center justify-between gap-2">
+              <span class="font-mono font-black text-[#5c0612] tracking-widest text-sm">${esc(t.reference)}</span>
+              <span class="text-[10px] font-black px-2 py-0.5 rounded-full bg-amber-100 text-[#5c0612] border border-amber-300">${esc(t.status)}</span>
+            </div>
+            <div class="text-[11px] text-slate-500 truncate">${esc((t.docs || []).join(', '))} - pickup ${esc(t.slot || '-')}</div>
+          </button>`).join('');
+      } catch (error) {
+        console.error('Find reference failed:', error);
+        showFindMessage('Could not search right now. Please check your connection and try again.', 'error');
+      } finally {
+        btn.disabled = false;
+      }
+    }
+
     function openTrackPage() {
       stopTracking();
       renderRecentRefs();
+      resetFindPanel();
       document.getElementById('trackRefInput').value = '';
       document.getElementById('trackResult').classList.add('hidden');
       document.getElementById('trackMessage').classList.add('hidden');
@@ -1035,6 +1226,17 @@
 
     function renderTrackResult(t) {
       lastTrackData = t;
+
+      const notice = document.getElementById('trackNotice');
+      if (t.slotChange && t.slotChange.to) {
+        document.getElementById('trackNoticeDates').innerText = `${t.slotChange.from || '-'}  to  ${t.slotChange.to}`;
+        document.getElementById('trackNoticeReason').innerText = t.slotChange.reason ? `Reason: ${t.slotChange.reason}` : '';
+        document.getElementById('trackNoticeWhen').innerText = t.slotChange.at && t.slotChange.at.toDate
+          ? `Changed ${t.slotChange.at.toDate().toLocaleString('en-PH')}` : '';
+        notice.classList.remove('hidden');
+      } else {
+        notice.classList.add('hidden');
+      }
       const statusStyles = {
         'Pending': 'bg-amber-100 text-[#5c0612] border-amber-300',
         'Ready for Pickup': 'bg-amber-200 text-[#5c0612] border-amber-400',

@@ -29,6 +29,10 @@
   </style>
 </head>
 <body class="min-h-screen flex flex-col justify-between text-slate-800 bg-amber-50/30 antialiased">
+  <div id="inAppNotice" class="hidden bg-amber-100 border-b border-amber-300 text-[#5c0612] text-xs font-semibold px-4 py-2.5 flex items-start justify-between gap-3">
+    <span>You are viewing this inside another app. For printing, saving images and sign-in, open this page in Chrome: tap the menu (&#8942; or &bull;&bull;&bull;), then &quot;Open in browser&quot;.</span>
+    <button onclick="dismissInAppNotice()" class="font-black text-base leading-none">&times;</button>
+  </div>
 
   <!-- TOP ADMIN NAVIGATION HEADER -->
   <header class="bg-[#5c0612] text-white shadow-xl sticky top-0 z-50 border-b-2 border-[#d4af37]">
@@ -303,7 +307,7 @@
 
   <!-- PROCESS REQUEST MODAL -->
   <div id="processModal" class="fixed inset-0 bg-slate-950/60 backdrop-blur-sm hidden z-50 flex items-center justify-center p-4">
-    <div class="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6 space-y-4 border border-amber-200">
+    <div class="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6 space-y-4 border border-amber-200 max-h-[92vh] overflow-y-auto overscroll-contain">
       <div class="flex justify-between items-center border-b border-amber-100 pb-3">
         <h3 class="text-base font-bold text-[#5c0612]">Manage Document Request</h3>
         <button onclick="closeProcessModal()" class="text-slate-400 hover:text-slate-600 text-xl font-bold">&times;</button>
@@ -344,6 +348,11 @@
       <div class="pt-3 border-t border-amber-100 space-y-2">
         <label class="block text-xs font-bold text-[#5c0612]">Adjust Pickup Date</label>
         <input type="date" id="modalPickupDate" class="w-full p-2.5 border border-amber-200 rounded-xl text-xs font-bold focus:ring-2 focus:ring-[#5c0612] focus:outline-none bg-amber-50/30">
+        <button onclick="openRescheduleDialog()" class="w-full bg-white hover:bg-amber-50 text-[#5c0612] font-bold py-2.5 rounded-xl text-xs transition border border-amber-300 flex items-center justify-center gap-2">
+          <i class="fa-solid fa-calendar-day"></i>
+          <span>Reschedule Pickup &amp; Notify Student</span>
+        </button>
+        <p class="text-[10px] text-slate-400 text-center">Use this when the pickup date must change (for example, a delay). The student sees the new date and your reason.</p>
       </div>
 
       <div class="grid grid-cols-2 gap-2 pt-2">
@@ -415,6 +424,54 @@
         <div id="staffFormMessage" class="hidden"></div>
         <p class="text-[10px] text-slate-400">Give them the email and temporary password privately. They can change it anytime with "Forgot password?" on the sign-in screen.</p>
       </form>
+    </div>
+  </div>
+
+  <!-- RESCHEDULE PICKUP DIALOG -->
+  <div id="rescheduleModal" class="fixed inset-0 bg-slate-950/60 backdrop-blur-sm hidden z-[65] flex items-center justify-center p-4">
+    <div class="bg-white rounded-2xl shadow-2xl max-w-sm w-full p-6 space-y-4 border border-amber-200 max-h-[92vh] overflow-y-auto overscroll-contain">
+      <div class="flex justify-between items-center border-b border-amber-100 pb-3">
+        <h3 class="text-base font-bold text-[#5c0612]">Reschedule Pickup</h3>
+        <button onclick="closeRescheduleDialog()" class="text-slate-400 hover:text-slate-600 text-xl font-bold">&times;</button>
+      </div>
+      <div class="bg-amber-50/60 border border-amber-200 rounded-xl p-3 text-xs space-y-1.5">
+        <div class="flex justify-between gap-3"><span class="text-slate-500">Reference</span><span id="rescheduleRef" class="font-mono font-black text-[#5c0612]"></span></div>
+        <div class="flex justify-between gap-3"><span class="text-slate-500">Student</span><span id="rescheduleStudent" class="font-bold text-slate-800 text-right"></span></div>
+        <div class="flex justify-between gap-3"><span class="text-slate-500">Current pickup date</span><span id="rescheduleOldDate" class="font-bold text-slate-800"></span></div>
+      </div>
+      <div class="space-y-1.5">
+        <label class="block text-xs font-bold text-[#5c0612]">New pickup date</label>
+        <input type="date" id="rescheduleNewDate" class="w-full p-2.5 border border-amber-200 rounded-xl text-xs font-bold focus:ring-2 focus:ring-[#5c0612] focus:outline-none bg-amber-50/30">
+      </div>
+      <div class="space-y-1.5">
+        <label class="block text-xs font-bold text-[#5c0612]">Reason (the student will see this)</label>
+        <textarea id="rescheduleReason" rows="3" maxlength="140" placeholder="e.g. Classes suspended due to the typhoon" class="w-full p-2.5 border border-amber-200 rounded-xl text-xs focus:ring-2 focus:ring-[#5c0612] focus:outline-none bg-amber-50/30"></textarea>
+      </div>
+      <label class="flex items-start gap-2 text-xs text-slate-700 cursor-pointer">
+        <input type="checkbox" id="rescheduleEmailCheck" class="mt-0.5 rounded text-[#5c0612] focus:ring-[#5c0612] w-4 h-4">
+        <span id="rescheduleEmailLabel"></span>
+      </label>
+      <p id="rescheduleError" class="hidden text-xs font-semibold text-rose-600"></p>
+      <div class="grid grid-cols-2 gap-2">
+        <button onclick="closeRescheduleDialog()" class="bg-amber-100 hover:bg-amber-200 text-[#5c0612] font-bold py-2.5 rounded-xl text-xs transition">Cancel</button>
+        <button id="rescheduleConfirmBtn" onclick="submitReschedule()" class="bg-[#5c0612] hover:bg-[#780a18] text-amber-200 font-bold py-2.5 rounded-xl text-xs transition disabled:opacity-60">Reschedule</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- IMAGE PREVIEW (works in every browser: download button, or press and hold the image) -->
+  <div id="imagePreviewModal" class="fixed inset-0 bg-slate-950/70 hidden z-[80] flex items-center justify-center p-4">
+    <div class="bg-white rounded-2xl shadow-2xl max-w-md w-full p-4 space-y-3 border border-amber-200 max-h-[95vh] overflow-y-auto overscroll-contain">
+      <div class="flex justify-between items-center">
+        <h3 class="text-sm font-bold text-[#5c0612]">Your Image</h3>
+        <button onclick="closeImagePreview()" class="text-slate-400 hover:text-slate-600 text-xl font-bold">&times;</button>
+      </div>
+      <img id="imagePreviewImg" alt="Saved summary" class="w-full rounded-lg border border-amber-200">
+      <p class="text-[11px] text-slate-500">Tap <strong>Download</strong>. If nothing downloads, press and hold the image, then choose Save image.</p>
+      <div class="grid grid-cols-2 gap-2">
+        <a id="imagePreviewDownload" download="summary.png" class="text-center bg-[#5c0612] hover:bg-[#780a18] text-amber-200 font-bold py-2.5 rounded-xl text-xs transition">Download</a>
+        <button onclick="closeImagePreview()" class="bg-amber-100 hover:bg-amber-200 text-[#5c0612] font-bold py-2.5 rounded-xl text-xs transition">Close</button>
+      </div>
     </div>
   </div>
 
@@ -532,6 +589,7 @@
     let authResolved = false;
 
     window.onload = function() {
+      showInAppNotice();
       showAuthPanel('loading');
       auth.onAuthStateChanged(handleAuthChange);
 
@@ -727,6 +785,7 @@
       document.getElementById('accountsModal').classList.add('hidden');
       document.getElementById('confirmClearModal').classList.add('hidden');
       resolveConfirm(false);
+      document.getElementById('rescheduleModal').classList.add('hidden');
       renderAdminQueue();
     }
 
@@ -1054,15 +1113,32 @@
         update.completedBy = currentStaff.name || currentStaff.email;
       }
 
+      const dateChanged = !!(newSlot && req.slot && newSlot !== req.slot);
+      if (dateChanged) {
+        update.slotChangedFrom = req.slot;
+        update.slotChangeReason = 'Updated by the registrar';
+        update.slotChangedAt = firebase.firestore.FieldValue.serverTimestamp();
+        update.slotChangedBy = currentStaff.name || currentStaff.email;
+      }
+
       const batch = db.batch();
       batch.update(requestsCollection.doc(req._docId), update);
 
       if (req.reference) {
-        batch.update(trackingCollection.doc(req.reference), {
+        const trackingUpdate = {
           status: newStatus,
           slot: newSlot,
           updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-        });
+        };
+        if (dateChanged) {
+          trackingUpdate.slotChange = {
+            from: req.slot,
+            to: newSlot,
+            reason: 'Updated by the registrar',
+            at: firebase.firestore.FieldValue.serverTimestamp()
+          };
+        }
+        batch.update(trackingCollection.doc(req.reference), trackingUpdate);
       }
 
       // Moving the pickup date moves the booking between the two days' slot counts
@@ -1142,9 +1218,7 @@
       }
     }
 
-    async function sendAutoEmail(req, status, slot) {
-      const { subject, body } = buildStatusEmailContent(req, status, slot);
-
+    async function sendEmailContent(req, subject, body) {
       await emailjs.send(EMAILJS_CONFIG.serviceId, EMAILJS_CONFIG.templateId, {
         to_email: req.email,
         to_name: req.name,
@@ -1153,6 +1227,11 @@
         message_html: esc(body).replace(/\n/g, '<br>'),
         reference: req.reference || ''
       });
+    }
+
+    async function sendAutoEmail(req, status, slot) {
+      const { subject, body } = buildStatusEmailContent(req, status, slot);
+      await sendEmailContent(req, subject, body);
 
       // Remember that this student was emailed (failure here must not look like an email failure)
       try {
@@ -1168,10 +1247,56 @@
       }
     }
 
+    function buildRescheduleEmailContent(req, oldSlot, newSlot, reason) {
+      const subject = `PSU Registrar: Pickup date changed (${req.reference || 'your request'})`;
+      let body = `Dear ${req.name},\n\nThe pickup date for your document request has been changed by the PSU Office of the University Registrar.\n\n`;
+      body += `Reference No.: ${req.reference || 'N/A'}\nDocument(s) Requested: ${req.doc}\n`;
+      body += `Previous Pickup Date: ${oldSlot || 'N/A'}\nNEW Pickup Date: ${newSlot}\n`;
+      if (reason) body += `Reason: ${reason}\n`;
+      body += `\nPlease bring your PSU Student ID when you claim your documents.\n`;
+      if (req.reference) {
+        body += `\nYou can check your request anytime using "Track My Request" on the student portal with your reference number (${req.reference}).\n`;
+      }
+      body += `\nWe apologize for any inconvenience.\n\nThank you,\nPSU Office of the University Registrar`;
+      return { subject, body };
+    }
+
+    async function emailReschedule(req, oldSlot, newSlot, reason) {
+      const { subject, body } = buildRescheduleEmailContent(req, oldSlot, newSlot, reason);
+      if (!autoEmailEnabled()) {
+        openMailAppWith(req.email, subject, body);
+        return;
+      }
+      showToast(`Sending email to ${req.email}...`, 'info');
+      try {
+        await sendEmailContent(req, subject, body);
+        showToast(`Email sent to ${req.email}`, 'success');
+        try {
+          await requestsCollection.doc(req._docId).update({
+            lastEmailAt: firebase.firestore.FieldValue.serverTimestamp(),
+            lastEmailFor: 'Pickup date changed'
+          });
+        } catch (error) {
+          console.error('Could not record the email:', error);
+        }
+      } catch (error) {
+        console.error('Reschedule email failed:', error);
+        const reasonText = (error && (error.text || error.message)) ? ' (' + String(error.text || error.message).slice(0, 140) + ')' : '';
+        showToast('The email could not be sent automatically.' + reasonText, 'error');
+        if (confirm('The automatic email failed. Open your mail app to send it manually instead?')) {
+          openMailAppWith(req.email, subject, body);
+        }
+      }
+    }
+
+    function openMailAppWith(email, subject, body) {
+      const mailtoLink = `mailto:${encodeURIComponent(email)}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+      window.location.href = mailtoLink;
+    }
+
     function openMailApp(req, status, slot) {
       const { subject, body } = buildStatusEmailContent(req, status, slot);
-      const mailtoLink = `mailto:${encodeURIComponent(req.email)}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
-      window.location.href = mailtoLink;
+      openMailAppWith(req.email, subject, body);
     }
 
     function updateAutoEmailChip() {
@@ -1225,6 +1350,9 @@
         const ops = [];
 
         active.forEach(r => ops.push(b => b.delete(requestsCollection.doc(r._docId))));
+        active.forEach(r => {
+          if (r.lookupKey && r.reference) ops.push(b => b.delete(db.collection('lookup').doc(r.lookupKey).collection('refs').doc(r.reference)));
+        });
 
         if (keepInventory) {
           // The Inventory stays, so keep the reference numbering and only release this queue's slots
@@ -1341,7 +1469,15 @@
       window.print();
     }
 
-    // Saves a slip/report as a PNG image (uses the html2canvas library)
+    // Saves a slip/report as a PNG image (uses the html2canvas library) and shows it in a preview
+    let previewUrl = null;
+
+    function closeImagePreview() {
+      document.getElementById('imagePreviewModal').classList.add('hidden');
+      document.getElementById('imagePreviewImg').removeAttribute('src');
+      if (previewUrl) { URL.revokeObjectURL(previewUrl); previewUrl = null; }
+    }
+
     async function saveHtmlAsImage(html, filename) {
       if (!window.html2canvas) {
         alert('Saving as an image is not available right now. Please use Print / Save as PDF instead.');
@@ -1355,14 +1491,13 @@
         const canvas = await window.html2canvas(holder, { scale: 2, backgroundColor: '#ffffff', useCORS: true });
         const blob = await new Promise((resolve) => canvas.toBlob(resolve, 'image/png'));
         if (!blob) throw new Error('The image came out empty');
-        const url = URL.createObjectURL(blob);
-        const link = document.createElement('a');
-        link.href = url;
+        if (previewUrl) URL.revokeObjectURL(previewUrl);
+        previewUrl = URL.createObjectURL(blob);
+        document.getElementById('imagePreviewImg').src = previewUrl;
+        const link = document.getElementById('imagePreviewDownload');
+        link.href = previewUrl;
         link.download = filename;
-        document.body.appendChild(link);
-        link.click();
-        link.remove();
-        setTimeout(() => URL.revokeObjectURL(url), 5000);
+        document.getElementById('imagePreviewModal').classList.remove('hidden');
         return true;
       } catch (error) {
         console.error('Save as image failed:', error);
@@ -1371,6 +1506,21 @@
       } finally {
         holder.remove();
       }
+    }
+
+    function isInAppBrowser() {
+      return /FBAN|FBAV|FB_IAB|FBIOS|Instagram|Line\/|MicroMessenger|Snapchat|musical_ly|TikTok/i.test((typeof navigator !== 'undefined' && navigator.userAgent) || '');
+    }
+
+    function showInAppNotice() {
+      if (!isInAppBrowser()) return;
+      try { if (sessionStorage.getItem('psu_inapp_dismissed')) return; } catch (e) {}
+      document.getElementById('inAppNotice').classList.remove('hidden');
+    }
+
+    function dismissInAppNotice() {
+      document.getElementById('inAppNotice').classList.add('hidden');
+      try { sessionStorage.setItem('psu_inapp_dismissed', '1'); } catch (e) {}
     }
 
     function requestSlipHtml(req) {
@@ -1774,6 +1924,7 @@
         const batch = db.batch();
         batch.delete(requestsCollection.doc(req._docId));
         if (req.reference) batch.delete(trackingCollection.doc(req.reference));
+        if (req.lookupKey && req.reference) batch.delete(db.collection('lookup').doc(req.lookupKey).collection('refs').doc(req.reference));
         if (req.slot) batch.set(slotsCollection.doc(req.slot), { count: firebase.firestore.FieldValue.increment(-1) }, { merge: true });
         await batch.commit();
         showToast('Request deleted', 'success');
@@ -1790,6 +1941,112 @@
       if (!req) return;
       const deleted = await deleteRequestPermanently(req._docId);
       if (deleted) closeProcessModal();
+    }
+
+    /* ---------- RESCHEDULE PICKUP ---------- */
+    function todayLocalISO() {
+      const d = new Date();
+      return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    }
+
+    function setRescheduleError(text) {
+      const el = document.getElementById('rescheduleError');
+      el.innerText = text || '';
+      el.classList.toggle('hidden', !text);
+    }
+
+    function openRescheduleDialog() {
+      const req = getSelectedRequest();
+      if (!req) return;
+      document.getElementById('rescheduleRef').innerText = req.reference || '-';
+      document.getElementById('rescheduleStudent').innerText = req.name || '';
+      document.getElementById('rescheduleOldDate').innerText = req.slot || '-';
+
+      const dateInput = document.getElementById('rescheduleNewDate');
+      dateInput.value = '';
+      dateInput.min = todayLocalISO();
+      document.getElementById('rescheduleReason').value = '';
+
+      const emailCheck = document.getElementById('rescheduleEmailCheck');
+      emailCheck.checked = !!req.email;
+      emailCheck.disabled = !req.email;
+      document.getElementById('rescheduleEmailLabel').innerText = req.email
+        ? `Email ${req.email} about this change${autoEmailEnabled() ? '' : ' (opens your mail app)'}`
+        : 'No email address on file, so no email can be sent';
+
+      setRescheduleError('');
+      document.getElementById('rescheduleConfirmBtn').disabled = false;
+      document.getElementById('rescheduleModal').classList.remove('hidden');
+    }
+
+    function closeRescheduleDialog() {
+      document.getElementById('rescheduleModal').classList.add('hidden');
+    }
+
+    async function submitReschedule() {
+      const req = getSelectedRequest();
+      if (!req || !currentStaff) return;
+
+      const newDate = document.getElementById('rescheduleNewDate').value;
+      const reason = document.getElementById('rescheduleReason').value.trim();
+      const sendEmail = document.getElementById('rescheduleEmailCheck').checked && !!req.email;
+
+      if (!newDate) { setRescheduleError('Choose the new pickup date.'); return; }
+      if (newDate === req.slot) { setRescheduleError('The new date is the same as the current pickup date.'); return; }
+      if (reason.length < 5) { setRescheduleError('Please give a short reason. The student will see it.'); return; }
+      setRescheduleError('');
+
+      const weekday = new Date(newDate + 'T00:00:00').getDay();
+      if (weekday === 0 || weekday === 6) {
+        const ok = await showConfirm({
+          title: 'Weekend date',
+          message: 'That date falls on a weekend, when the office is normally closed. Use it anyway?',
+          confirmText: 'Use This Date',
+          tone: 'primary'
+        });
+        if (!ok) return;
+      }
+
+      const btn = document.getElementById('rescheduleConfirmBtn');
+      btn.disabled = true;
+
+      const ts = firebase.firestore.FieldValue.serverTimestamp();
+      const name = currentStaff.name || currentStaff.email;
+      const oldDate = req.slot || '';
+
+      const batch = db.batch();
+      batch.update(requestsCollection.doc(req._docId), {
+        slot: newDate,
+        slotChangedFrom: oldDate,
+        slotChangeReason: reason,
+        slotChangedAt: ts,
+        slotChangedBy: name,
+        updatedBy: name,
+        updatedAt: ts
+      });
+      if (req.reference) {
+        batch.update(trackingCollection.doc(req.reference), {
+          slot: newDate,
+          slotChange: { from: oldDate, to: newDate, reason, at: ts },
+          updatedAt: ts
+        });
+      }
+      if (oldDate) batch.set(slotsCollection.doc(oldDate), { count: firebase.firestore.FieldValue.increment(-1) }, { merge: true });
+      batch.set(slotsCollection.doc(newDate), { count: firebase.firestore.FieldValue.increment(1) }, { merge: true });
+
+      try {
+        await batch.commit();
+      } catch (error) {
+        console.error('Reschedule failed:', error);
+        setRescheduleError('Could not save the change. Check your connection and try again.');
+        btn.disabled = false;
+        return;
+      }
+
+      closeRescheduleDialog();
+      closeProcessModal();
+      showToast('Pickup date changed', 'success');
+      if (sendEmail) await emailReschedule(req, oldDate, newDate, reason);
     }
 
     /* ---------- ACCOUNTS (Super Admin) ---------- */
