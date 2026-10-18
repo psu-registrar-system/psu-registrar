@@ -15,12 +15,6 @@
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
     :root { color-scheme: only light; }
     body { font-family: 'Inter', sans-serif; }
-    #printArea { display: none; }
-    @media print {
-      body > *:not(#printArea) { display: none !important; }
-      #printArea { display: block !important; }
-      @page { margin: 14mm; }
-    }
     .custom-scrollbar::-webkit-scrollbar { width: 6px; height: 6px; }
     .custom-scrollbar::-webkit-scrollbar-track { background: #fff8f0; }
     .custom-scrollbar::-webkit-scrollbar-thumb { background: #d4af37; border-radius: 4px; }
@@ -28,7 +22,7 @@
 </head>
 <body class="min-h-screen flex flex-col justify-between text-slate-800 bg-amber-50/30 antialiased">
   <div id="inAppNotice" class="hidden bg-amber-100 border-b border-amber-300 text-[#5c0612] text-xs font-semibold px-4 py-2.5 flex items-start justify-between gap-3">
-    <span>You are viewing this inside another app. For printing and saving images, open this page in Chrome: tap the menu (&#8942; or &bull;&bull;&bull;), then &quot;Open in browser&quot;.</span>
+    <span>You are viewing this inside another app. To save images, open this page in Chrome: tap the menu (&#8942; or &bull;&bull;&bull;), then &quot;Open in browser&quot;.</span>
     <button onclick="dismissInAppNotice()" class="font-black text-base leading-none">&times;</button>
   </div>
 
@@ -208,12 +202,14 @@
     <div id="studentStepSlot" class="student-step hidden bg-white p-6 sm:p-8 rounded-2xl shadow-sm border border-amber-200/80 space-y-5">
       <div class="border-b border-amber-100 pb-4">
         <h2 class="text-xl font-bold text-[#5c0612]">Pickup Appointment Date</h2>
-        <p class="text-xs text-slate-500 mt-0.5">Documents require a 7-day lead processing time. Max 200 daily slots allowed.</p>
+        <p class="text-xs text-slate-500 mt-0.5">Documents take about 3 working days to process. Pickup is Monday to Friday only. Up to 200 pickups per day.</p>
       </div>
 
       <div class="space-y-3">
         <label class="block text-xs font-bold uppercase tracking-wider text-[#5c0612]">Choose Available Date</label>
-        <input type="date" id="pickupDatePicker" onchange="calculateSlotAvailability()" required class="w-full p-3 border border-amber-200 rounded-xl text-sm font-bold text-slate-800 focus:ring-2 focus:ring-[#5c0612] focus:outline-none bg-amber-50/30">
+        <input type="date" id="pickupDatePicker" onchange="onPickupDateChange()" required class="w-full p-3 border border-amber-200 rounded-xl text-sm font-bold text-slate-800 focus:ring-2 focus:ring-[#5c0612] focus:outline-none bg-amber-50/30">
+        <p id="pickupEarliestText" class="text-[11px] text-slate-500"></p>
+        <p id="pickupDateHint" class="hidden text-[11px] font-semibold rounded-lg px-3 py-2 border bg-amber-50 text-amber-800 border-amber-200"></p>
       </div>
 
       <div id="slotCapacityBox" class="p-5 rounded-2xl border border-amber-200 bg-amber-50/40 space-y-3">
@@ -317,15 +313,10 @@
         <p class="text-[11px] text-amber-200/80">Updates are emailed to <strong id="summaryEmail" class="text-amber-100"></strong>. If you do not see them, check your spam or junk folder.</p>
       </div>
 
-      <div class="grid grid-cols-2 gap-2">
-        <button onclick="printConfirmation()" class="bg-white hover:bg-amber-50 text-[#5c0612] font-bold py-3 rounded-xl transition border border-amber-300 text-sm">
-          <i class="fa-solid fa-print mr-2"></i>Print / PDF
-        </button>
-        <button onclick="saveConfirmationImage()" class="bg-white hover:bg-amber-50 text-[#5c0612] font-bold py-3 rounded-xl transition border border-amber-300 text-sm">
-          <i class="fa-solid fa-image mr-2"></i>Save as Image
-        </button>
-      </div>
-      <p class="text-[10px] text-slate-400 -mt-3">If printing or saving does not work, open this page in Chrome.</p>
+      <button onclick="saveConfirmationImage()" class="w-full bg-white hover:bg-amber-50 text-[#5c0612] font-bold py-3 rounded-xl transition border border-amber-300 text-sm">
+        <i class="fa-solid fa-image mr-2"></i>Save as Image
+      </button>
+      <p class="text-[10px] text-slate-400 -mt-3">If saving does not work, open this page in Chrome.</p>
 
       <div class="bg-amber-50/40 p-5 rounded-2xl border border-amber-200 text-xs text-left space-y-3">
         <div class="flex justify-between border-b border-amber-200/60 pb-2"><span class="text-slate-500">Student ID & Name:</span> <span id="summaryStudent" class="font-bold text-slate-900"></span></div>
@@ -406,14 +397,9 @@
             <div class="flex justify-between gap-3"><span class="text-slate-500">Last Updated:</span><span id="trackUpdated" class="font-semibold text-slate-700"></span></div>
           </div>
         </div>
-      <div class="grid grid-cols-2 gap-2">
-        <button onclick="printTrackStatus()" class="bg-white hover:bg-amber-50 text-[#5c0612] font-bold py-3 rounded-xl transition border border-amber-300 text-sm">
-          <i class="fa-solid fa-print mr-2"></i>Print / PDF
-        </button>
-        <button onclick="saveTrackImage()" class="bg-white hover:bg-amber-50 text-[#5c0612] font-bold py-3 rounded-xl transition border border-amber-300 text-sm">
-          <i class="fa-solid fa-image mr-2"></i>Save as Image
-        </button>
-      </div>
+      <button onclick="saveTrackImage()" class="w-full bg-white hover:bg-amber-50 text-[#5c0612] font-bold py-3 rounded-xl transition border border-amber-300 text-sm">
+        <i class="fa-solid fa-image mr-2"></i>Save as Image
+      </button>
         <p class="text-[11px] text-slate-400 text-center">This page updates by itself while it is open.</p>
       </div>
 
@@ -455,8 +441,6 @@
       </div>
     </div>
   </div>
-
-  <div id="printArea"></div>
 
   <footer class="bg-white border-t border-amber-200 py-4 text-center text-xs text-slate-600 font-medium">
     Pampanga State University Student Registrar Portal
@@ -552,17 +536,68 @@
       document.getElementById('customAlertModal').classList.add('hidden');
     }
 
-    function getFutureDateString(daysAhead) {
-      const d = new Date();
-      d.setDate(d.getDate() + daysAhead);
+    const PROCESSING_WORKING_DAYS = 3;
+
+    function toISODate(d) {
       return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
     }
 
+    function isWeekend(dateStr) {
+      const day = new Date(dateStr + 'T00:00:00').getDay();
+      return day === 0 || day === 6;
+    }
+
+    function addWorkingDays(from, count) {
+      const d = new Date(from.getFullYear(), from.getMonth(), from.getDate());
+      let added = 0;
+      while (added < count) {
+        d.setDate(d.getDate() + 1);
+        if (d.getDay() !== 0 && d.getDay() !== 6) added++;
+      }
+      return d;
+    }
+
+    function nextWeekday(dateStr) {
+      const d = new Date(dateStr + 'T00:00:00');
+      while (d.getDay() === 0 || d.getDay() === 6) d.setDate(d.getDate() + 1);
+      return toISODate(d);
+    }
+
+    function earliestPickupDate(now = new Date()) {
+      return toISODate(addWorkingDays(now, PROCESSING_WORKING_DAYS));
+    }
+
+    function prettyDate(dateStr) {
+      return new Date(dateStr + 'T00:00:00').toLocaleDateString('en-PH', { weekday: 'long', month: 'long', day: 'numeric' });
+    }
+
     function setupDateLimits() {
-      const minDateStr = getFutureDateString(7);
+      const minDateStr = earliestPickupDate();
       const datePicker = document.getElementById('pickupDatePicker');
       datePicker.min = minDateStr;
       datePicker.value = minDateStr;
+      document.getElementById('pickupEarliestText').innerText = `Earliest pickup: ${prettyDate(minDateStr)} (${PROCESSING_WORKING_DAYS} working days). Weekends are not available.`;
+      document.getElementById('pickupDateHint').classList.add('hidden');
+      calculateSlotAvailability();
+    }
+
+    function onPickupDateChange() {
+      const picker = document.getElementById('pickupDatePicker');
+      const hint = document.getElementById('pickupDateHint');
+      const value = picker.value;
+      if (!value) return;
+
+      let message = '';
+      if (picker.min && value < picker.min) {
+        picker.value = picker.min;
+        message = `The earliest pickup date is ${prettyDate(picker.min)}.`;
+      } else if (isWeekend(value)) {
+        picker.value = nextWeekday(value);
+        message = `The office is open Monday to Friday, so weekends are not available. We moved your date to ${prettyDate(picker.value)}.`;
+      }
+
+      hint.innerText = message;
+      hint.classList.toggle('hidden', !message);
       calculateSlotAvailability();
     }
 
@@ -658,7 +693,13 @@
     const PRICE_PER_DOCUMENT = 100;
 
     function saveSlotSelection() {
-      studentState.slotDate = document.getElementById('pickupDatePicker').value;
+      const picker = document.getElementById('pickupDatePicker');
+      if (!picker.value || (picker.min && picker.value < picker.min) || isWeekend(picker.value)) {
+        onPickupDateChange();
+        showCustomAlert('Check Your Pickup Date', 'Please choose a weekday (Monday to Friday) on or after the earliest pickup date.');
+        return;
+      }
+      studentState.slotDate = picker.value;
       updatePaymentAmountUI();
       showStudentStep('studentStepPayment');
     }
@@ -854,14 +895,6 @@
         </div>`;
     }
 
-    function printSlip(html) {
-      const area = document.getElementById('printArea');
-      area.innerHTML = html;
-      const cleanup = () => { area.innerHTML = ''; window.removeEventListener('afterprint', cleanup); };
-      window.addEventListener('afterprint', cleanup);
-      window.print();
-    }
-
     // Saves a slip/report as a PNG image (uses the html2canvas library) and shows it in a preview
     let previewUrl = null;
 
@@ -974,16 +1007,6 @@
           'For your privacy, your name and other personal details are not shown on the tracking page.'
         ]
       });
-    }
-
-    function printConfirmation() {
-      const html = confirmationSlipHtml();
-      if (html) printSlip(html);
-    }
-
-    function printTrackStatus() {
-      const html = trackSlipHtml();
-      if (html) printSlip(html);
     }
 
     function saveConfirmationImage() {

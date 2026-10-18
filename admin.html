@@ -346,8 +346,10 @@
       </div>
 
       <div class="pt-3 border-t border-amber-100 space-y-2">
-        <label class="block text-xs font-bold text-[#5c0612]">Adjust Pickup Date</label>
-        <input type="date" id="modalPickupDate" class="w-full p-2.5 border border-amber-200 rounded-xl text-xs font-bold focus:ring-2 focus:ring-[#5c0612] focus:outline-none bg-amber-50/30">
+        <div class="flex justify-between items-center">
+          <span class="text-xs font-bold text-[#5c0612]">Pickup Date</span>
+          <span id="modalPickupDateText" class="text-xs font-black text-slate-800"></span>
+        </div>
         <button onclick="openRescheduleDialog()" class="w-full bg-white hover:bg-amber-50 text-[#5c0612] font-bold py-2.5 rounded-xl text-xs transition border border-amber-300 flex items-center justify-center gap-2">
           <i class="fa-solid fa-calendar-day"></i>
           <span>Reschedule Pickup &amp; Notify Student</span>
@@ -990,7 +992,7 @@
       document.getElementById('modalAmount').innerText = typeof req.amount === 'number'
         ? `₱${req.amount.toLocaleString('en-PH', { minimumFractionDigits: 2 })}`
         : 'N/A';
-      document.getElementById('modalPickupDate').value = req.slot;
+      document.getElementById('modalPickupDateText').innerText = req.slot || '-';
       document.getElementById('modalUpdatedBy').innerText = req.updatedBy || '-';
       document.getElementById('modalLastEmail').innerText = (req.lastEmailAt && req.lastEmailAt.toDate)
         ? `${req.lastEmailAt.toDate().toLocaleString()} (${req.lastEmailFor || ''})`
@@ -1065,7 +1067,6 @@
     async function updateSelectedRequestStatus(newStatus) {
       const req = getSelectedRequest();
       if (!req || !currentStaff) return;
-      const newSlot = document.getElementById('modalPickupDate').value || req.slot;
 
       const sameStatus = req.status === newStatus;
       const emailNote = !req.email
@@ -1088,7 +1089,7 @@
           ['Student', req.name],
           ['Document(s)', req.doc],
           ['Payment', `${req.payment} - ${req.paymentStatus || 'N/A'}`],
-          ['Pickup date', newSlot]
+          ['Pickup date', req.slot || '-']
         ],
         confirmText: sameStatus ? 'Update and Email Again' : (newStatus === 'Completed' ? 'Yes, Mark Completed' : 'Yes, Mark Ready'),
         tone: newStatus === 'Completed' ? 'success' : 'primary'
@@ -1104,7 +1105,6 @@
 
       const update = {
         status: newStatus,
-        slot: newSlot,
         updatedBy: currentStaff.name || currentStaff.email,
         updatedAt: firebase.firestore.FieldValue.serverTimestamp()
       };
@@ -1113,43 +1113,19 @@
         update.completedBy = currentStaff.name || currentStaff.email;
       }
 
-      const dateChanged = !!(newSlot && req.slot && newSlot !== req.slot);
-      if (dateChanged) {
-        update.slotChangedFrom = req.slot;
-        update.slotChangeReason = 'Updated by the registrar';
-        update.slotChangedAt = firebase.firestore.FieldValue.serverTimestamp();
-        update.slotChangedBy = currentStaff.name || currentStaff.email;
-      }
-
       const batch = db.batch();
       batch.update(requestsCollection.doc(req._docId), update);
 
       if (req.reference) {
-        const trackingUpdate = {
+        batch.update(trackingCollection.doc(req.reference), {
           status: newStatus,
-          slot: newSlot,
           updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-        };
-        if (dateChanged) {
-          trackingUpdate.slotChange = {
-            from: req.slot,
-            to: newSlot,
-            reason: 'Updated by the registrar',
-            at: firebase.firestore.FieldValue.serverTimestamp()
-          };
-        }
-        batch.update(trackingCollection.doc(req.reference), trackingUpdate);
-      }
-
-      // Moving the pickup date moves the booking between the two days' slot counts
-      if (newSlot && req.slot && newSlot !== req.slot) {
-        batch.set(slotsCollection.doc(req.slot), { count: firebase.firestore.FieldValue.increment(-1) }, { merge: true });
-        batch.set(slotsCollection.doc(newSlot), { count: firebase.firestore.FieldValue.increment(1) }, { merge: true });
+        });
       }
 
       batch.commit().then(() => {
         closeProcessModal();
-        notifyStudentViaEmail(req, newStatus, newSlot);
+        notifyStudentViaEmail(req, newStatus, req.slot);
       }).catch((error) => {
         console.error('Error updating request:', error);
         alert('Could not update request. Check your connection and try again.');
