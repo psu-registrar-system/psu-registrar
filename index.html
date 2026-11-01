@@ -256,8 +256,8 @@
         <label class="flex items-start space-x-3 p-4 border border-amber-200 rounded-2xl cursor-pointer hover:bg-amber-50/50 transition">
           <input type="radio" name="paymentOption" value="GCash" checked onchange="togglePaymentUI()" class="mt-1 text-[#5c0612] focus:ring-[#5c0612] w-4 h-4">
           <div>
-            <div class="font-bold text-slate-900 text-sm">GCash Online Payment</div>
-            <div class="text-xs text-slate-500">Scan official QR code and enter 13-digit transaction reference number below.</div>
+            <div id="onlineOptionTitle" class="font-bold text-slate-900 text-sm">GCash Online Payment</div>
+            <div id="onlineOptionDesc" class="text-xs text-slate-500">Scan official QR code and enter 13-digit transaction reference number below.</div>
           </div>
         </label>
 
@@ -277,6 +277,14 @@
             <label class="block text-xs font-bold uppercase tracking-wider text-[#5c0612]">GCash Reference / Transaction No. <span class="text-rose-600">*</span></label>
             <input type="text" id="gcashRefNumberInput" placeholder="e.g. 1081 873 061538" class="w-full p-3 border border-amber-300 rounded-xl text-sm font-mono text-slate-900 font-bold focus:ring-2 focus:ring-[#5c0612] focus:outline-none bg-white">
           </div>
+        </div>
+
+        <div id="onlineAutoBox" class="hidden p-4 border border-amber-300 bg-amber-50/60 rounded-2xl text-left space-y-1.5 text-xs text-slate-600">
+          <div class="font-bold text-[#5c0612]">How online payment works</div>
+          <div>1. Tap Finalize. A QR code for the exact amount appears.</div>
+          <div>2. Scan it with GCash, Maya or any banking app, or save it as an image and scan it from your gallery.</div>
+          <div>3. Your payment is confirmed automatically, and your request goes to the registrar once it is paid.</div>
+          <div class="text-[11px] text-slate-400">The QR code lasts 30 minutes and can be renewed. Your request is reserved for 24 hours.</div>
         </div>
 
         <label class="flex items-start space-x-3 p-4 border border-amber-200 rounded-2xl cursor-pointer hover:bg-amber-50/50 transition">
@@ -334,6 +342,61 @@
       </button>
     </div>
 
+    <!-- PAY ONLINE (QR) -->
+    <div id="studentStepPay" class="student-step hidden bg-white p-6 sm:p-8 rounded-2xl shadow-sm border border-amber-200/80 space-y-5 text-center">
+      <div class="border-b border-amber-100 pb-4 text-left">
+        <h2 class="text-xl font-bold text-[#5c0612]">Pay Online</h2>
+        <p class="text-xs text-slate-500 mt-0.5">Scan this QR code with GCash, Maya or your banking app.</p>
+      </div>
+
+      <div id="payWaiting" class="space-y-4">
+        <div class="bg-[#5c0612] text-amber-100 rounded-2xl p-4 flex items-center justify-between text-left">
+          <div>
+            <div class="text-[11px] uppercase tracking-wider font-bold text-amber-300">Reference</div>
+            <div id="payReference" class="font-mono font-black text-white tracking-widest"></div>
+          </div>
+          <div class="text-right">
+            <div class="text-[11px] uppercase tracking-wider font-bold text-amber-300">Amount to pay</div>
+            <div id="payAmount" class="text-2xl font-black text-white"></div>
+          </div>
+        </div>
+
+        <div class="flex justify-center items-center min-h-[220px]">
+          <img id="payQrImage" alt="QR code to pay" class="hidden w-56 h-56 border-4 border-white shadow-md rounded-xl bg-white">
+          <div id="payQrLoading" class="text-xs text-slate-500">Preparing your QR code...</div>
+        </div>
+
+        <p id="payCountdown" class="text-sm font-bold text-[#5c0612]"></p>
+        <p id="payStatusLine" class="text-xs text-slate-500">Waiting for your payment. This page updates by itself.</p>
+        <p id="payError" class="hidden text-xs font-semibold rounded-xl px-3 py-2 border bg-rose-50 text-rose-700 border-rose-200"></p>
+
+        <div class="grid grid-cols-2 gap-2">
+          <button onclick="saveQrImage()" class="bg-white hover:bg-amber-50 text-[#5c0612] font-bold py-3 rounded-xl transition border border-amber-300 text-sm"><i class="fa-solid fa-image mr-2"></i>Save QR as Image</button>
+          <button onclick="requestQr()" class="bg-white hover:bg-amber-50 text-[#5c0612] font-bold py-3 rounded-xl transition border border-amber-300 text-sm"><i class="fa-solid fa-rotate mr-2"></i>Get a New QR</button>
+        </div>
+        <button onclick="checkPaidNow()" class="w-full bg-[#5c0612] hover:bg-[#780a18] text-amber-200 font-bold py-3 rounded-xl transition shadow-md border border-amber-500/30">I Already Paid</button>
+
+        <div class="text-left bg-amber-50/60 border border-amber-200 rounded-xl p-3 text-[11px] text-slate-600 space-y-1">
+          <div class="font-bold text-[#5c0612]">Paying from this same phone?</div>
+          <div>Tap Save QR as Image. In your payment app, open Scan QR, tap the gallery or upload icon, and choose the saved image.</div>
+        </div>
+
+        <button onclick="payLater()" class="w-full bg-amber-100 hover:bg-amber-200 text-[#5c0612] font-bold py-3 rounded-xl transition border border-amber-300">I'll Pay Later</button>
+        <p class="text-[10px] text-slate-400">Your request is reserved for 24 hours. Find it later under Track My Request, then tap Pay Now.</p>
+      </div>
+
+      <div id="paySuccess" class="hidden space-y-4">
+        <div class="w-20 h-20 mx-auto rounded-full bg-emerald-100 border-4 border-emerald-300 flex items-center justify-center text-4xl text-emerald-600"><i class="fa-solid fa-check"></i></div>
+        <h3 class="text-xl font-black text-emerald-700">Payment Received</h3>
+        <div class="bg-emerald-50 border border-emerald-200 rounded-xl p-4 text-sm space-y-1.5">
+          <div class="flex justify-between"><span class="text-slate-500">Reference</span><span id="paySuccessRef" class="font-mono font-black text-[#5c0612]"></span></div>
+          <div class="flex justify-between"><span class="text-slate-500">Amount paid</span><span id="paySuccessAmount" class="font-black text-slate-900"></span></div>
+        </div>
+        <p class="text-xs text-slate-500">Your request has been sent to the registrar.</p>
+        <button onclick="showPaidConfirmation()" class="w-full bg-[#5c0612] hover:bg-[#780a18] text-amber-200 font-bold py-3 rounded-xl transition shadow-md border border-amber-500/30">Continue</button>
+      </div>
+    </div>
+
     <!-- TRACK MY REQUEST -->
     <div id="studentStepTrack" class="student-step hidden bg-white p-6 sm:p-8 rounded-2xl shadow-sm border border-amber-200/80 space-y-5">
       <div class="border-b border-amber-100 pb-4">
@@ -388,6 +451,12 @@
             <div id="trackNoticeDates" class="font-bold text-slate-800"></div>
             <div id="trackNoticeReason" class="text-slate-600"></div>
             <div id="trackNoticeWhen" class="text-[10px] text-slate-400"></div>
+          </div>
+
+          <div id="trackPayBox" class="hidden rounded-xl border border-amber-300 bg-amber-50 px-3 py-3 text-xs space-y-2">
+            <div class="font-black text-amber-800"><i class="fa-solid fa-wallet mr-1.5"></i>Payment needed</div>
+            <div id="trackPayText" class="text-slate-600"></div>
+            <button id="trackPayBtn" onclick="payFromTrack()" class="w-full bg-[#5c0612] hover:bg-[#780a18] text-amber-200 font-bold py-2.5 rounded-xl transition border border-amber-500/30">Pay Now</button>
           </div>
 
           <div class="text-xs space-y-2.5">
@@ -458,7 +527,7 @@
     };
 
     function buildReference(payment, docs, seq) {
-      const payLetter = payment === 'GCash' ? 'O' : 'C';
+      const payLetter = payment === 'Cash' ? 'C' : 'O';
       const docCode = docs.map(d => DOC_LETTERS[d]).filter(Boolean).sort().join('').padStart(4, 'X');
       return payLetter + docCode + String(seq).padStart(4, '0');
     }
@@ -490,6 +559,7 @@
     window.onload = function() {
       showInAppNotice();
       setupDateLimits();
+      applyPaymentMode();
       initRequestWindowSync();
     };
 
@@ -497,8 +567,13 @@
       setSyncBadge('Connecting to Server...', 'bg-amber-400');
 
       systemConfigDoc.onSnapshot((docSnap) => {
-        requestsOpen = docSnap.exists ? (docSnap.data().requestsOpen !== false) : true;
+        const cfg = docSnap.exists ? docSnap.data() : {};
+        requestsOpen = cfg.requestsOpen !== false;
+        pricePerDocument = (typeof cfg.pricePerDocument === 'number' && cfg.pricePerDocument > 0) ? cfg.pricePerDocument : 100;
+        onlineMode = cfg.onlinePaymentMode === 'automatic' ? 'automatic' : 'manual';
         updateOfficeHoursStatus();
+        applyPaymentMode();
+        if (studentState.docs.length) updatePaymentAmountUI();
         setSyncBadge('Live Server Sync Active', 'bg-emerald-400');
       }, (error) => {
         console.error('Request window sync error:', error);
@@ -535,6 +610,11 @@
     function closeCustomAlert() {
       document.getElementById('customAlertModal').classList.add('hidden');
     }
+
+    const PAYMENT_API = 'https://psu-registrar.vercel.app';   // the payment server
+    const PAY_HOLD_HOURS = 24;                                 // how long an unpaid online request is kept
+    let pricePerDocument = 100;                                // changed by the Super Admin in Settings
+    let onlineMode = 'manual';                                 // 'manual' (reference code) or 'automatic' (QR Ph)
 
     const PROCESSING_WORKING_DAYS = 3;
 
@@ -658,6 +738,7 @@
 
     function showStudentStep(stepId) {
       if (stepId !== 'studentStepTrack') stopTracking();
+      if (stepId !== 'studentStepPay') stopPayWatching();
       document.querySelectorAll('.student-step').forEach(el => el.classList.add('hidden'));
       document.getElementById(stepId).classList.remove('hidden');
     }
@@ -690,8 +771,6 @@
       showStudentStep('studentStepSlot');
     }
 
-    const PRICE_PER_DOCUMENT = 100;
-
     function saveSlotSelection() {
       const picker = document.getElementById('pickupDatePicker');
       if (!picker.value || (picker.min && picker.value < picker.min) || isWeekend(picker.value)) {
@@ -706,29 +785,44 @@
 
     function updatePaymentAmountUI() {
       const docCount = studentState.docs.length;
-      const total = docCount * PRICE_PER_DOCUMENT;
+      const total = docCount * pricePerDocument;
       studentState.totalAmount = total;
 
       const formatted = `₱${total.toLocaleString('en-PH', { minimumFractionDigits: 2 })}`;
 
       document.getElementById('totalAmountDisplay').innerText = formatted;
       document.getElementById('totalAmountDocsBreakdown').innerText =
-        `${docCount} document${docCount !== 1 ? 's' : ''} × ₱${PRICE_PER_DOCUMENT.toFixed(2)} each`;
+        `${docCount} document${docCount !== 1 ? 's' : ''} × ₱${pricePerDocument.toFixed(2)} each`;
       document.getElementById('gcashAmountToPay').innerText = `Amount to Pay: ${formatted}`;
       document.getElementById('gcashQrImage').src =
         `https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent('GCASH_PAYMENT_PSU_REGISTRAR|AMOUNT:' + total)}`;
     }
 
-    function togglePaymentUI() {
-      const paymentOpt = document.querySelector('input[name="paymentOption"]:checked').value;
-      const gcashBox = document.getElementById('gcashInteractiveBox');
-      studentState.payment = paymentOpt;
+    // The online option is either the manual GCash reference form or the automatic QR Ph payment
+    function applyPaymentMode() {
+      const automatic = onlineMode === 'automatic';
+      const onlineRadio = document.querySelector('input[name="paymentOption"]:not([value="Cash"])');
+      if (onlineRadio) onlineRadio.value = automatic ? 'Online' : 'GCash';
+      document.getElementById('onlineOptionTitle').innerText = automatic ? 'Online Payment (QR Ph)' : 'GCash Online Payment';
+      document.getElementById('onlineOptionDesc').innerText = automatic
+        ? 'Pay with GCash, Maya or any banking app. Your payment is confirmed automatically.'
+        : 'Scan official QR code and enter 13-digit transaction reference number below.';
+      togglePaymentUI();
+    }
 
-      if (paymentOpt === 'GCash') {
-        gcashBox.classList.remove('hidden');
-      } else {
-        gcashBox.classList.add('hidden');
-      }
+    function togglePaymentUI() {
+      const checked = document.querySelector('input[name="paymentOption"]:checked');
+      if (!checked) return;
+      const paymentOpt = checked.value;
+      studentState.payment = paymentOpt;
+      document.getElementById('gcashInteractiveBox').classList.toggle('hidden', paymentOpt !== 'GCash');
+      document.getElementById('onlineAutoBox').classList.toggle('hidden', paymentOpt !== 'Online');
+    }
+
+    function initialPaymentStatus(paymentOpt) {
+      if (paymentOpt === 'Online') return 'Awaiting Payment';
+      if (paymentOpt === 'GCash') return 'Awaiting Verification';
+      return 'Unpaid (Pay at Counter)';
     }
 
     function finalizeStudentRequest() {
@@ -764,7 +858,7 @@
         payment: studentState.payment,
         refNo: studentState.refNo,
         amount: studentState.totalAmount,
-        paymentStatus: studentState.payment === 'GCash' ? 'Awaiting Verification' : 'Unpaid (Pay at Counter)',
+        paymentStatus: initialPaymentStatus(studentState.payment),
         status: 'Pending',
         timestamp: new Date().toLocaleString(),
         createdAt: firebase.firestore.FieldValue.serverTimestamp()
@@ -790,6 +884,8 @@
           reference,
           status: 'Pending',
           paymentStatus: newRequestPayload.paymentStatus,
+          payment: newRequestPayload.payment,
+          amount: newRequestPayload.amount,
           docs: newRequestPayload.docs,
           slot: newRequestPayload.slot,
           createdAt: firebase.firestore.FieldValue.serverTimestamp(),
@@ -817,10 +913,13 @@
           document.getElementById('summaryDate').innerText = studentState.slotDate;
           document.getElementById('summaryPayment').innerText = studentState.payment;
           document.getElementById('summaryAmount').innerText = `₱${studentState.totalAmount.toLocaleString('en-PH', { minimumFractionDigits: 2 })}`;
-          document.getElementById('summaryPaymentStatus').innerText = paymentOpt === 'GCash' ? 'Awaiting Verification by Registrar' : 'Unpaid (Pay at Counter)';
+          document.getElementById('summaryPaymentStatus').innerText = paymentOpt === 'Online' ? 'Awaiting payment (within 24 hours)' : (paymentOpt === 'GCash' ? 'Awaiting Verification by Registrar' : 'Unpaid (Pay at Counter)');
 
           const refRow = document.getElementById('summaryRefRow');
-          if (paymentOpt === 'GCash') {
+          if (paymentOpt === 'Online') {
+            refRow.classList.add('hidden');
+            document.getElementById('summaryInstructions').innerText = 'Instruction: Your request reaches the registrar once your online payment is received. Pay within 24 hours using Track My Request, then Pay Now.';
+          } else if (paymentOpt === 'GCash') {
             refRow.classList.remove('hidden');
             document.getElementById('summaryRefNo').innerText = studentState.refNo;
             document.getElementById('summaryInstructions').innerText = 'Instruction: The Registrar will verify your GCash reference number before processing. Please keep your payment receipt and present it along with your PSU Student ID when claiming your document.';
@@ -829,7 +928,8 @@
             document.getElementById('summaryInstructions').innerText = 'Instruction: Pay at the Cashier window on your reserved pickup date prior to claiming your document.';
           }
 
-          showStudentStep('studentStepFinal');
+          if (paymentOpt === 'Online') openPayScreen(issuedReference, studentState.totalAmount);
+          else showStudentStep('studentStepFinal');
         })
         .catch((error) => {
           console.error('Error submitting request:', error);
@@ -957,7 +1057,9 @@
       const notes = ['Bring your PSU Student ID when you claim your documents.'];
       notes.push(s.payment === 'GCash'
         ? 'Keep your GCash payment receipt. The Registrar will verify your reference number before processing.'
-        : 'Pay at the Cashier window on your pickup date before claiming your documents.');
+        : (s.payment === 'Online'
+            ? (s.paymentStatus === 'Paid' ? 'Your online payment has been received.' : 'Pay online within 24 hours: open Track My Request, then tap Pay Now.')
+            : 'Pay at the Cashier window on your pickup date before claiming your documents.'));
       notes.push(`Track your request anytime: open ${pageUrl()}, tap "Track My Request" and enter your reference number.`);
 
       return buildSlipHtml({
@@ -971,7 +1073,7 @@
           ['Document(s)', s.doc],
           ['Purpose', s.purpose],
           ['Pickup date', s.slot],
-          ['Payment option', s.payment],
+          ['Payment option', s.payment === 'Online' ? 'Online (QR Ph)' : s.payment],
           ['Amount due', money],
           ['Payment status', s.paymentStatus],
           ['GCash reference no.', s.refNo]
@@ -986,6 +1088,7 @@
       const paymentText = {
         'Paid': 'Paid',
         'Awaiting Verification': 'Submitted - awaiting verification',
+        'Awaiting Payment': 'Waiting for online payment',
         'Unpaid (Pay at Counter)': 'Unpaid - pay at the cashier on pickup'
       };
       const updated = t.updatedAt && t.updatedAt.toDate ? t.updatedAt.toDate().toLocaleString('en-PH') : '';
@@ -1026,6 +1129,157 @@
       if (navigator.clipboard && navigator.clipboard.writeText) {
         navigator.clipboard.writeText(ref).then(done).catch(() => {});
       }
+    }
+
+    /* ---------- PAY ONLINE (QR Ph) ---------- */
+    let payState = { reference: '', amount: 0, expiresAt: 0, qr: '', busy: false, timer: null, unsub: null };
+
+    async function callPaymentApi(action, reference) {
+      try {
+        const res = await fetch(`${PAYMENT_API}/api/${action}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ reference })
+        });
+        let body = {};
+        try { body = await res.json(); } catch (e) {}
+        return { ok: res.ok, status: res.status, body };
+      } catch (error) {
+        return { ok: false, status: 0, body: { error: 'Could not reach the payment service. Please check your internet connection and try again.' } };
+      }
+    }
+
+    function formatPeso(n) {
+      return `₱${Number(n || 0).toLocaleString('en-PH', { minimumFractionDigits: 2 })}`;
+    }
+
+    function stopPayWatching() {
+      if (payState.timer) { clearInterval(payState.timer); payState.timer = null; }
+      if (payState.unsub) { payState.unsub(); payState.unsub = null; }
+    }
+
+    function showPayError(text) {
+      const el = document.getElementById('payError');
+      el.innerText = text || '';
+      el.classList.toggle('hidden', !text);
+    }
+
+    function openPayScreen(reference, amount) {
+      stopPayWatching();
+      payState = { reference, amount, expiresAt: 0, qr: '', busy: false, timer: null, unsub: null };
+      document.getElementById('payReference').innerText = reference;
+      document.getElementById('payAmount').innerText = formatPeso(amount);
+      document.getElementById('payWaiting').classList.remove('hidden');
+      document.getElementById('paySuccess').classList.add('hidden');
+      document.getElementById('payQrImage').classList.add('hidden');
+      document.getElementById('payCountdown').innerText = '';
+      document.getElementById('payStatusLine').innerText = 'Waiting for your payment. This page updates by itself.';
+      showPayError('');
+      showStudentStep('studentStepPay');
+
+      payState.unsub = db.collection('tracking').doc(reference).onSnapshot((snap) => {
+        if (snap.exists && snap.data().paymentStatus === 'Paid') onPaymentReceived();
+      }, (error) => console.warn('Payment watch error:', error));
+
+      requestQr();
+    }
+
+    async function requestQr() {
+      if (payState.busy || !payState.reference) return;
+      payState.busy = true;
+      showPayError('');
+      document.getElementById('payQrImage').classList.add('hidden');
+      document.getElementById('payQrLoading').classList.remove('hidden');
+      document.getElementById('payCountdown').innerText = '';
+
+      const reference = payState.reference;
+      const res = await callPaymentApi('create-payment', reference);
+      payState.busy = false;
+      if (payState.reference !== reference) return;   // the student moved on
+
+      document.getElementById('payQrLoading').classList.add('hidden');
+      if (res.ok && res.body.paid) { onPaymentReceived(); return; }
+      if (res.ok && res.body.qr) {
+        payState.qr = res.body.qr;
+        payState.expiresAt = res.body.expiresAt;
+        const img = document.getElementById('payQrImage');
+        img.src = res.body.qr;
+        img.classList.remove('hidden', 'opacity-30');
+        startPayCountdown();
+        return;
+      }
+      showPayError((res.body && res.body.error) || 'Could not prepare the QR code. Please try again.');
+    }
+
+    function startPayCountdown() {
+      if (payState.timer) clearInterval(payState.timer);
+      const tick = () => {
+        const left = payState.expiresAt - Date.now();
+        const label = document.getElementById('payCountdown');
+        if (left > 0) {
+          const m = Math.floor(left / 60000), sec = Math.floor((left % 60000) / 1000);
+          label.innerText = `This QR code is valid for ${m}:${String(sec).padStart(2, '0')}`;
+        } else {
+          label.innerText = 'This QR code has expired. Tap Get a New QR.';
+          document.getElementById('payQrImage').classList.add('opacity-30');
+          clearInterval(payState.timer);
+          payState.timer = null;
+        }
+      };
+      tick();
+      payState.timer = setInterval(tick, 1000);
+    }
+
+    async function checkPaidNow() {
+      if (!payState.reference) return;
+      document.getElementById('payStatusLine').innerText = 'Checking your payment...';
+      const res = await callPaymentApi('check-payment', payState.reference);
+      if (res.ok && res.body.paid) { onPaymentReceived(); return; }
+      document.getElementById('payStatusLine').innerText = 'Waiting for your payment. This page updates by itself.';
+      if (res.ok && res.body.status === 'needs_review') {
+        showPayError('A payment was received that the registrar needs to review. Please show your reference number at the registrar\'s office.');
+      } else if (res.ok) {
+        showPayError('Your payment has not been received yet. If you just paid, wait a minute and tap I Already Paid again.');
+      } else {
+        showPayError((res.body && res.body.error) || 'Could not check the payment right now. Please try again.');
+      }
+    }
+
+    function onPaymentReceived() {
+      const reference = payState.reference;
+      stopPayWatching();
+      if (lastSubmittedSlip && lastSubmittedSlip.reference === reference) lastSubmittedSlip.paymentStatus = 'Paid';
+      document.getElementById('paySuccessRef').innerText = reference;
+      document.getElementById('paySuccessAmount').innerText = formatPeso(payState.amount);
+      document.getElementById('payWaiting').classList.add('hidden');
+      document.getElementById('paySuccess').classList.remove('hidden');
+    }
+
+    function showPaidConfirmation() {
+      document.getElementById('summaryPaymentStatus').innerText = 'Paid';
+      document.getElementById('summaryInstructions').innerText = 'Instruction: Your online payment has been received. Please bring your PSU Student ID when claiming your document.';
+      showStudentStep('studentStepFinal');
+    }
+
+    function payLater() {
+      stopPayWatching();
+      showStudentStep('studentStepFinal');
+    }
+
+    function saveQrImage() {
+      if (!payState.qr) { showPayError('The QR code is not ready yet.'); return; }
+      if (previewUrl) { URL.revokeObjectURL(previewUrl); previewUrl = null; }
+      document.getElementById('imagePreviewImg').src = payState.qr;
+      const link = document.getElementById('imagePreviewDownload');
+      link.href = payState.qr;
+      link.download = `PSU-pay-${payState.reference}.png`;
+      document.getElementById('imagePreviewModal').classList.remove('hidden');
+    }
+
+    function payFromTrack() {
+      const t = lastTrackData;
+      if (!t) return;
+      openPayScreen(t.reference, t.amount);
     }
 
     /* ---------- REFERENCES SAVED ON THIS DEVICE ---------- */
@@ -1268,8 +1522,23 @@
       const paymentText = {
         'Paid': 'Paid',
         'Awaiting Verification': 'Submitted - awaiting verification',
+        'Awaiting Payment': 'Waiting for online payment',
         'Unpaid (Pay at Counter)': 'Unpaid - pay at the cashier on pickup'
       };
+
+      const payBox = document.getElementById('trackPayBox');
+      if (t.payment === 'Online' && t.paymentStatus === 'Awaiting Payment') {
+        const created = t.createdAt && t.createdAt.toDate ? t.createdAt.toDate().getTime() : null;
+        const deadline = created ? created + PAY_HOLD_HOURS * 3600 * 1000 : null;
+        const expired = deadline !== null && Date.now() > deadline;
+        document.getElementById('trackPayText').innerText = expired
+          ? 'The payment window for this request has ended, so the request will be removed. Please submit a new request.'
+          : `Pay ${formatPeso(t.amount)} to send this request to the registrar.${deadline ? ' Pay before ' + new Date(deadline).toLocaleString('en-PH') + '.' : ''}`;
+        document.getElementById('trackPayBtn').classList.toggle('hidden', expired);
+        payBox.classList.remove('hidden');
+      } else {
+        payBox.classList.add('hidden');
+      }
 
       document.getElementById('trackReference').innerText = t.reference || '';
       const badge = document.getElementById('trackStatusBadge');

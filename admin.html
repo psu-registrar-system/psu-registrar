@@ -188,6 +188,33 @@
         </div>
       </div>
 
+      <!-- Payment Settings (Super Admin) -->
+      <div id="paymentSettingsBar" class="super-only hidden p-5 rounded-2xl shadow-sm border bg-white border-amber-200 space-y-3">
+        <div class="flex items-center space-x-3">
+          <div class="w-10 h-10 rounded-xl flex items-center justify-center text-lg bg-amber-100 text-[#5c0612] border border-amber-300"><i class="fa-solid fa-peso-sign"></i></div>
+          <div>
+            <h2 class="text-sm font-bold tracking-tight text-[#5c0612]">Payment Settings</h2>
+            <p class="text-xs text-slate-500">Set the fee and choose how online payments are handled.</p>
+          </div>
+        </div>
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 items-end">
+          <div>
+            <label class="block text-[11px] font-bold text-[#5c0612] mb-1">Price per document (PHP)</label>
+            <input type="number" id="settingPrice" min="1" max="10000" step="1" class="w-full p-2.5 border border-amber-200 rounded-xl text-xs font-bold focus:ring-2 focus:ring-[#5c0612] focus:outline-none bg-amber-50/30">
+          </div>
+          <div>
+            <label class="block text-[11px] font-bold text-[#5c0612] mb-1">Online payment mode</label>
+            <select id="settingMode" class="w-full p-2.5 border border-amber-200 rounded-xl text-xs font-bold focus:ring-2 focus:ring-[#5c0612] focus:outline-none bg-amber-50/30">
+              <option value="manual">Manual: student types a GCash reference code</option>
+              <option value="automatic">Automatic: QR code confirmed by PayMongo</option>
+            </select>
+          </div>
+          <button id="settingSaveBtn" onclick="savePaymentSettings()" class="bg-[#5c0612] hover:bg-[#780a18] text-amber-200 font-bold py-2.5 rounded-xl text-xs transition border border-amber-500/30 disabled:opacity-60">Save Settings</button>
+        </div>
+        <p id="settingMessage" class="hidden text-xs font-semibold"></p>
+        <p class="text-[10px] text-slate-400">Switch to Automatic only after the payment server is connected. Each fee must be at least PayMongo's minimum payment amount.</p>
+      </div>
+
       <!-- Metrics -->
       <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <div class="bg-white p-5 rounded-2xl border border-amber-200 shadow-sm space-y-1">
@@ -215,6 +242,7 @@
           Inventory <span id="inventoryCount" class="ml-1 text-[10px] font-black px-1.5 py-0.5 rounded-full bg-amber-200 text-[#5c0612]">0</span>
         </button>
         <button id="tabSummary" onclick="switchView('summary')" class="px-4 py-2 rounded-xl text-xs font-bold border bg-white text-[#5c0612] border-amber-300 hover:bg-amber-50">Monthly Summary</button>
+        <button id="tabAwaiting" onclick="switchView('awaiting')" class="px-4 py-2 rounded-xl text-xs font-bold border bg-white text-[#5c0612] border-amber-300 hover:bg-amber-50">Awaiting Payment <span id="awaitingCount" class="ml-1 text-[10px] font-black px-1.5 py-0.5 rounded-full bg-amber-200 text-[#5c0612]">0</span></button>
       </div>
 
       <!-- Processing Queue Table -->
@@ -299,6 +327,38 @@
           </div>
         </div>
         <div id="summaryBody" class="p-5 space-y-5"></div>
+      </div>
+
+      <!-- Awaiting online payment -->
+      <div id="awaitingView" class="hidden space-y-4">
+        <div class="bg-white rounded-2xl border border-amber-200 shadow-sm overflow-hidden">
+          <div class="p-5 border-b border-amber-200 bg-amber-50/40">
+            <h3 class="text-base font-bold text-[#5c0612]">Awaiting Online Payment</h3>
+            <p class="text-xs text-slate-500">These online requests are reserved for 24 hours and reach the Active Queue automatically once they are paid.</p>
+          </div>
+          <div class="overflow-x-auto custom-scrollbar">
+            <table class="w-full text-left text-sm text-slate-600">
+              <thead class="bg-amber-100/60 text-[11px] text-[#5c0612] uppercase font-bold tracking-wider border-b border-amber-200">
+                <tr>
+                  <th class="py-3 px-4">Reference & Student</th>
+                  <th class="py-3 px-4">Document(s)</th>
+                  <th class="py-3 px-4">Amount</th>
+                  <th class="py-3 px-4">Time Left</th>
+                  <th class="py-3 px-4 text-center super-only hidden">Action</th>
+                </tr>
+              </thead>
+              <tbody id="awaitingTableBody" class="divide-y divide-amber-100"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <div id="paymentIssuesBox" class="super-only hidden bg-white rounded-2xl border border-rose-200 shadow-sm overflow-hidden">
+          <div class="p-5 border-b border-rose-200 bg-rose-50/60">
+            <h3 class="text-base font-bold text-rose-700">Payments Needing Attention</h3>
+            <p class="text-xs text-slate-500">Payments that could not be matched to a request automatically (wrong amount, a second payment, or an unknown payment). Check them in the PayMongo dashboard, then mark each as resolved.</p>
+          </div>
+          <div id="paymentIssuesList" class="divide-y divide-rose-100"></div>
+        </div>
       </div>
 
     </div>
@@ -566,6 +626,9 @@
     let requestsData = [];
     let selectedRequestDocId = null;
     let requestsOpen = true;
+    let paymentConfig = { price: 100, mode: 'manual' };
+    let paymentIssues = [];
+    const PAY_HOLD_HOURS = 24;
     let currentStaff = null;
     let authBusy = false;
     let pendingAuthMessage = '';
@@ -754,10 +817,25 @@
 
       activeListeners.push(
         systemConfigDoc.onSnapshot((docSnap) => {
-          requestsOpen = docSnap.exists ? (docSnap.data().requestsOpen !== false) : true;
+          const cfg = docSnap.exists ? docSnap.data() : {};
+          requestsOpen = cfg.requestsOpen !== false;
+          paymentConfig = {
+            price: (typeof cfg.pricePerDocument === 'number' && cfg.pricePerDocument > 0) ? cfg.pricePerDocument : 100,
+            mode: cfg.onlinePaymentMode === 'automatic' ? 'automatic' : 'manual'
+          };
           updateRequestWindowUI();
+          updatePaymentSettingsUI();
         }, (error) => {
           console.error('Request window sync error:', error);
+        })
+      );
+
+      activeListeners.push(
+        db.collection('paymentIssues').where('resolved', '==', false).onSnapshot((snap) => {
+          paymentIssues = snap.docs.map(d => ({ _id: d.id, ...d.data() }));
+          renderAwaiting();
+        }, (error) => {
+          console.warn('Payment issues sync error:', error);
         })
       );
 
@@ -782,6 +860,7 @@
       activeListeners = [];
       if (staffListUnsub) { staffListUnsub(); staffListUnsub = null; }
       requestsData = [];
+      paymentIssues = [];
       selectedRequestDocId = null;
       document.getElementById('processModal').classList.add('hidden');
       document.getElementById('accountsModal').classList.add('hidden');
@@ -899,6 +978,8 @@
     function renderPaymentStatusBadge(paymentStatus) {
       if (paymentStatus === 'Paid') {
         return `<span class="mt-1 inline-block px-2 py-0.5 bg-emerald-100 text-emerald-800 rounded-full text-[10px] font-bold border border-emerald-300">PAID</span>`;
+      } else if (paymentStatus === 'Awaiting Payment') {
+        return `<span class="mt-1 inline-block px-2 py-0.5 bg-amber-100 text-amber-800 rounded-full text-[10px] font-bold border border-amber-300">AWAITING PAYMENT</span>`;
       } else if (paymentStatus === 'Awaiting Verification') {
         return `<span class="mt-1 inline-block px-2 py-0.5 bg-amber-100 text-amber-800 rounded-full text-[10px] font-bold border border-amber-300">UNVERIFIED</span>`;
       } else if (paymentStatus === 'Unpaid (Pay at Counter)') {
@@ -914,7 +995,7 @@
       const searchTerm = (document.getElementById('searchInput')?.value || '').toLowerCase().trim();
       tbody.innerHTML = '';
 
-      const activeData = requestsData.filter(r => !r.archived);
+      const activeData = requestsData.filter(r => !r.archived && !isAwaitingPayment(r));
       const pendingCount = activeData.filter(r => r.status === 'Pending').length;
       const pickupCount = activeData.filter(r => r.status === 'Ready for Pickup').length;
       const completedCount = activeData.filter(r => r.status === 'Completed').length;
@@ -925,6 +1006,7 @@
 
       renderInventory();
       renderMonthlySummary();
+      renderAwaiting();
 
       let filtered = activeData;
       if (searchTerm) {
@@ -988,7 +1070,7 @@
       document.getElementById('modalStudentCourse').innerText = `${req.course || 'N/A'} (${req.year || 'N/A'})`;
       document.getElementById('modalDocType').innerText = req.doc;
       document.getElementById('modalPurpose').innerText = `"${req.purpose}"`;
-      document.getElementById('modalPayment').innerText = req.payment;
+      document.getElementById('modalPayment').innerText = req.payment === 'Online' ? 'Online (QR Ph)' : req.payment;
       document.getElementById('modalAmount').innerText = typeof req.amount === 'number'
         ? `₱${req.amount.toLocaleString('en-PH', { minimumFractionDigits: 2 })}`
         : 'N/A';
@@ -1016,9 +1098,12 @@
       const statusEl = document.getElementById('modalPaymentStatus');
       const btn = document.getElementById('markPaidBtn');
       const btnText = document.getElementById('markPaidBtnText');
+      const automatic = req.paymentChannel === 'QR Ph';   // confirmed by PayMongo: registrars cannot undo it
+
+      document.getElementById('paymentVerifyRow').classList.toggle('hidden', automatic);
 
       if (req.paymentStatus === 'Paid') {
-        statusEl.innerText = 'Paid';
+        statusEl.innerText = automatic ? 'Paid (QR Ph, automatic)' : 'Paid';
         statusEl.className = 'font-bold text-emerald-700';
         btn.className = 'w-full py-2.5 rounded-xl text-xs font-bold transition border flex items-center justify-center gap-2 bg-slate-100 hover:bg-slate-200 text-slate-600 border-slate-300';
         btnText.innerText = 'Undo: Mark as Not Paid';
@@ -1029,13 +1114,14 @@
         btnText.innerText = 'Mark Payment as Verified / Paid';
       }
     }
-
     function togglePaymentStatus() {
       const req = getSelectedRequest();
       if (!req || !currentStaff) return;
 
+      if (req.paymentChannel === 'QR Ph') return;   // automatic payments are not changed by hand
+
       const newStatus = req.paymentStatus === 'Paid'
-        ? (req.payment === 'GCash' ? 'Awaiting Verification' : 'Unpaid (Pay at Counter)')
+        ? (req.payment === 'GCash' ? 'Awaiting Verification' : (req.payment === 'Online' ? 'Awaiting Payment' : 'Unpaid (Pay at Counter)'))
         : 'Paid';
 
       const batch = db.batch();
@@ -1519,7 +1605,7 @@
           ['Purpose', req.purpose],
           ['Submitted', when(req.createdAt)],
           ['Pickup date', req.slot],
-          ['Payment option', req.payment],
+          ['Payment option', req.payment === 'Online' ? 'Online (QR Ph)' : req.payment],
           ['Amount', money],
           ['Payment status', req.paymentStatus],
           ['GCash reference no.', req.refNo],
@@ -1570,6 +1656,7 @@
     }
 
     function computeMonthlySummary(data, month) {
+      data = data.filter(r => !isAwaitingPayment(r));   // unpaid online requests are not received requests yet
       const received = data.filter(r => { const d = toDateSafe(r.createdAt); return d && monthKeyOf(d) === month; });
       const released = data.filter(r => { const d = toDateSafe(r.completedAt); return d && monthKeyOf(d) === month; });
 
@@ -1740,17 +1827,17 @@
 
     /* ---------- INVENTORY ---------- */
     function switchView(view) {
-      document.getElementById('queueView').classList.toggle('hidden', view !== 'queue');
-      document.getElementById('inventoryView').classList.toggle('hidden', view !== 'inventory');
-      document.getElementById('summaryView').classList.toggle('hidden', view !== 'summary');
+      const views = { queue: 'queueView', inventory: 'inventoryView', summary: 'summaryView', awaiting: 'awaitingView' };
+      const tabs = { queue: 'tabQueue', inventory: 'tabInventory', summary: 'tabSummary', awaiting: 'tabAwaiting' };
       const active = 'px-4 py-2 rounded-xl text-xs font-bold border bg-[#5c0612] text-amber-200 border-[#5c0612]';
       const idle = 'px-4 py-2 rounded-xl text-xs font-bold border bg-white text-[#5c0612] border-amber-300 hover:bg-amber-50';
-      document.getElementById('tabQueue').className = view === 'queue' ? active : idle;
-      document.getElementById('tabInventory').className = view === 'inventory' ? active : idle;
-      document.getElementById('tabSummary').className = view === 'summary' ? active : idle;
+      Object.keys(views).forEach((key) => {
+        document.getElementById(views[key]).classList.toggle('hidden', view !== key);
+        document.getElementById(tabs[key]).className = view === key ? active : idle;
+      });
       if (view === 'summary') renderMonthlySummary();
+      if (view === 'awaiting') renderAwaiting();
     }
-
     function toDateSafe(ts) {
       return ts && typeof ts.toDate === 'function' ? ts.toDate() : null;
     }
@@ -1917,6 +2004,169 @@
       if (!req) return;
       const deleted = await deleteRequestPermanently(req._docId);
       if (deleted) closeProcessModal();
+    }
+
+    /* ---------- ONLINE PAYMENT: awaiting list, settings, alerts ---------- */
+    function isAwaitingPayment(r) {
+      return r.paymentStatus === 'Awaiting Payment';
+    }
+
+    function formatTimeLeft(createdAt) {
+      const created = toDateSafe(createdAt);
+      if (!created) return '-';
+      const left = created.getTime() + PAY_HOLD_HOURS * 3600 * 1000 - Date.now();
+      if (left <= 0) return 'Expired (removed at the next daily cleanup)';
+      const h = Math.floor(left / 3600000), m = Math.floor((left % 3600000) / 60000);
+      return `${h}h ${String(m).padStart(2, '0')}m left`;
+    }
+
+    const ISSUE_LABELS = {
+      'unmatched-payment': 'A payment arrived that matches no request',
+      'amount-mismatch': 'A payment with the wrong amount',
+      'duplicate-payment': 'A second payment for an already-paid request'
+    };
+
+    function renderAwaiting() {
+      const tbody = document.getElementById('awaitingTableBody');
+      if (!tbody) return;
+      const isSuper = currentStaff && currentStaff.role === 'superadmin';
+      const list = requestsData.filter(r => !r.archived && isAwaitingPayment(r))
+        .sort((a, b) => ((toDateSafe(b.createdAt) || 0) - (toDateSafe(a.createdAt) || 0)));
+      document.getElementById('awaitingCount').innerText = list.length;
+
+      tbody.innerHTML = list.length === 0
+        ? '<tr><td colspan="5" class="py-8 text-center text-slate-400 text-xs font-semibold">No requests are waiting for online payment.</td></tr>'
+        : list.map((req) => `
+          <tr class="hover:bg-amber-50/40 transition">
+            <td class="py-3 px-4">
+              <div class="font-mono text-[11px] font-black text-[#5c0612] tracking-wider">${esc(req.reference || '-')}</div>
+              <div class="font-bold text-slate-900 text-xs">${esc(req.name)}</div>
+              <div class="text-[11px] text-slate-400">${esc(req.email || '')}</div>
+            </td>
+            <td class="py-3 px-4 text-xs font-semibold text-slate-700">${esc(req.doc)}</td>
+            <td class="py-3 px-4 text-xs font-bold text-slate-700">${typeof req.amount === 'number' ? esc(formatMoney(req.amount, '₱')) : '-'}</td>
+            <td class="py-3 px-4 text-xs font-semibold text-slate-600">${esc(formatTimeLeft(req.createdAt))}</td>
+            ${isSuper ? `<td class="py-3 px-4 text-center whitespace-nowrap space-x-1.5">
+              <button onclick="markAwaitingPaid('${esc(req._docId)}')" class="bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 text-emerald-700 text-xs px-3 py-1 rounded-lg transition font-bold">Mark Paid</button>
+              <button onclick="deleteRequestPermanently('${esc(req._docId)}')" title="Delete permanently" class="bg-rose-50 hover:bg-rose-100 border border-rose-200 text-rose-700 text-xs px-2.5 py-1 rounded-lg transition"><i class="fa-solid fa-trash-can"></i></button>
+            </td>` : ''}
+          </tr>`).join('');
+
+      const box = document.getElementById('paymentIssuesList');
+      if (box) {
+        box.innerHTML = paymentIssues.length === 0
+          ? '<p class="px-5 py-6 text-center text-slate-400 text-xs font-semibold">Nothing needs attention.</p>'
+          : paymentIssues.map((i) => {
+            const amount = typeof i.amountCentavos === 'number' ? ` - ${formatMoney(i.amountCentavos / 100, '₱')}` : '';
+            const when = toDateSafe(i.recordedAt);
+            return `
+              <div class="flex items-start justify-between gap-3 px-5 py-3">
+                <div class="min-w-0 text-xs space-y-0.5">
+                  <div class="font-bold text-rose-700">${esc(ISSUE_LABELS[i.type] || i.type || 'Payment issue')}${esc(amount)}</div>
+                  <div class="text-slate-600">${i.reference ? 'Request ' + esc(i.reference) + ' - ' : ''}PayMongo payment ${esc(i.paymentId || i._id)}</div>
+                  <div class="text-[10px] text-slate-400">${when ? esc(when.toLocaleString('en-PH')) : ''}</div>
+                </div>
+                <button onclick="resolvePaymentIssue('${esc(i._id)}')" class="shrink-0 bg-white hover:bg-rose-50 border border-rose-200 text-rose-700 text-[11px] px-3 py-1.5 rounded-lg transition font-bold">Mark Resolved</button>
+              </div>`;
+          }).join('');
+      }
+    }
+
+    async function markAwaitingPaid(docId) {
+      if (!currentStaff || currentStaff.role !== 'superadmin') return;
+      const req = getRequestByDocId(docId);
+      if (!req || !isAwaitingPayment(req)) return;
+
+      const ok = await showConfirm({
+        title: 'Mark as paid by hand?',
+        message: 'Only do this after you have confirmed the money was received (for example in the PayMongo dashboard). The request will move to the Active Queue as Paid.',
+        details: [['Reference', req.reference || '-'], ['Student', req.name], ['Amount', typeof req.amount === 'number' ? formatMoney(req.amount, '₱') : '-']],
+        confirmText: 'Mark as Paid',
+        tone: 'success'
+      });
+      if (!ok) return;
+
+      const ts = firebase.firestore.FieldValue.serverTimestamp();
+      const name = currentStaff.name || currentStaff.email;
+      const batch = db.batch();
+      batch.update(requestsCollection.doc(req._docId), { paymentStatus: 'Paid', paymentChannel: 'Manual', paidAt: ts, updatedBy: name, updatedAt: ts });
+      if (req.reference) batch.update(trackingCollection.doc(req.reference), { paymentStatus: 'Paid', updatedAt: ts });
+      try {
+        await batch.commit();
+        showToast('Marked as paid. It is now in the Active Queue.', 'success');
+      } catch (error) {
+        console.error('Manual payment mark failed:', error);
+        alert('Could not update the request. Check your connection and try again.');
+      }
+    }
+
+    async function resolvePaymentIssue(issueId) {
+      if (!currentStaff || currentStaff.role !== 'superadmin') return;
+      const issue = paymentIssues.find(i => i._id === issueId);
+      if (!issue) return;
+      const ok = await showConfirm({
+        title: 'Mark as resolved?',
+        message: 'Confirm you have checked this payment in the PayMongo dashboard (and refunded or matched it if needed).',
+        details: [['Payment', issue.paymentId || issue._id], ['Problem', ISSUE_LABELS[issue.type] || issue.type || '-']],
+        confirmText: 'Mark Resolved',
+        tone: 'primary'
+      });
+      if (!ok) return;
+      try {
+        await db.collection('paymentIssues').doc(issueId).update({
+          resolved: true,
+          resolvedBy: currentStaff.name || currentStaff.email,
+          resolvedAt: firebase.firestore.FieldValue.serverTimestamp()
+        });
+      } catch (error) {
+        console.error('Could not resolve the issue:', error);
+        alert('Could not update. Check your connection and try again.');
+      }
+    }
+
+    function setSettingMessage(text, tone) {
+      const el = document.getElementById('settingMessage');
+      el.innerText = text || '';
+      el.className = (text ? '' : 'hidden ') + 'text-xs font-semibold ' + (tone === 'error' ? 'text-rose-600' : 'text-emerald-700');
+    }
+
+    function updatePaymentSettingsUI() {
+      const price = document.getElementById('settingPrice');
+      const mode = document.getElementById('settingMode');
+      if (!price || !mode) return;
+      if (document.activeElement !== price) price.value = paymentConfig.price;
+      if (document.activeElement !== mode) mode.value = paymentConfig.mode;
+    }
+
+    async function savePaymentSettings() {
+      if (!currentStaff || currentStaff.role !== 'superadmin') return;
+      const price = Number(document.getElementById('settingPrice').value);
+      const mode = document.getElementById('settingMode').value;
+
+      if (!Number.isInteger(price) || price < 1 || price > 10000) { setSettingMessage('Enter a whole-peso price between 1 and 10,000.', 'error'); return; }
+      if (mode !== 'manual' && mode !== 'automatic') { setSettingMessage('Choose a payment mode.', 'error'); return; }
+
+      if (mode === 'automatic' && paymentConfig.mode !== 'automatic') {
+        const ok = await showConfirm({
+          title: 'Turn on automatic online payments?',
+          message: 'Students who choose online payment will get a QR code and their payment is confirmed by PayMongo. Make sure the payment server is connected first.',
+          confirmText: 'Turn On',
+          tone: 'primary'
+        });
+        if (!ok) return;
+      }
+
+      const btn = document.getElementById('settingSaveBtn');
+      btn.disabled = true;
+      try {
+        await systemConfigDoc.set({ pricePerDocument: price, onlinePaymentMode: mode }, { merge: true });
+        setSettingMessage('Saved. New requests use this price and mode.', 'success');
+      } catch (error) {
+        console.error('Saving settings failed:', error);
+        setSettingMessage('Could not save. Check your connection and try again.', 'error');
+      } finally {
+        btn.disabled = false;
+      }
     }
 
     /* ---------- RESCHEDULE PICKUP ---------- */
