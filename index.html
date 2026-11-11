@@ -202,7 +202,7 @@
     <div id="studentStepSlot" class="student-step hidden bg-white p-6 sm:p-8 rounded-2xl shadow-sm border border-amber-200/80 space-y-5">
       <div class="border-b border-amber-100 pb-4">
         <h2 class="text-xl font-bold text-[#5c0612]">Pickup Appointment Date</h2>
-        <p class="text-xs text-slate-500 mt-0.5">Documents take about 3 working days to process. Pickup is Monday to Friday only. Up to 200 pickups per day.</p>
+        <p class="text-xs text-slate-500 mt-0.5">Documents take about 3 working days to process. Pickup is Monday to Friday only, except holidays and closures. Up to 200 pickups per day.</p>
       </div>
 
       <div class="space-y-3">
@@ -571,8 +571,10 @@
         requestsOpen = cfg.requestsOpen !== false;
         pricePerDocument = (typeof cfg.pricePerDocument === 'number' && cfg.pricePerDocument > 0) ? cfg.pricePerDocument : 100;
         onlineMode = cfg.onlinePaymentMode === 'automatic' ? 'automatic' : 'manual';
+        closedRanges = normalizeClosed(cfg.closedDates);
         updateOfficeHoursStatus();
         applyPaymentMode();
+        refreshDateRules();
         if (studentState.docs.length) updatePaymentAmountUI();
         setSyncBadge('Live Server Sync Active', 'bg-emerald-400');
       }, (error) => {
@@ -616,33 +618,47 @@
     let pricePerDocument = 100;                                // changed by the Super Admin in Settings
     let onlineMode = 'manual';                                 // 'manual' (reference code) or 'automatic' (QR Ph)
 
+    let closedRanges = [];                                     // holidays and closures set by the Super Admin: [{from, to, name}]
+
     const PROCESSING_WORKING_DAYS = 3;
 
     function toISODate(d) {
       return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
     }
 
-    function isWeekend(dateStr) {
-      const day = new Date(dateStr + 'T00:00:00').getDay();
-      return day === 0 || day === 6;
+    function normalizeClosed(list) {
+      if (!Array.isArray(list)) return [];
+      const iso = /^\d{4}-\d{2}-\d{2}$/;
+      return list
+        .filter(r => r && iso.test(r.from) && (!r.to || iso.test(r.to)))
+        .map(r => ({ from: r.from, to: (r.to && r.to >= r.from) ? r.to : r.from, name: String(r.name || 'a holiday').slice(0, 60) }));
     }
 
+    // '' when the office is open that day, otherwise the reason it is closed
+    function closedReason(dateStr) {
+      const range = closedRanges.find(r => dateStr >= r.from && dateStr <= r.to);
+      if (range) return range.name;
+      const day = new Date(dateStr + 'T00:00:00').getDay();
+      return (day === 0 || day === 6) ? 'the weekend' : '';
+    }
+
+    function isClosedDay(dateStr) {
+      return closedReason(dateStr) !== '';
+    }
     function addWorkingDays(from, count) {
       const d = new Date(from.getFullYear(), from.getMonth(), from.getDate());
       let added = 0;
       while (added < count) {
         d.setDate(d.getDate() + 1);
-        if (d.getDay() !== 0 && d.getDay() !== 6) added++;
+        if (!isClosedDay(toISODate(d))) added++;
       }
       return d;
     }
-
-    function nextWeekday(dateStr) {
+    function nextOpenDay(dateStr) {
       const d = new Date(dateStr + 'T00:00:00');
-      while (d.getDay() === 0 || d.getDay() === 6) d.setDate(d.getDate() + 1);
+      while (isClosedDay(toISODate(d))) d.setDate(d.getDate() + 1);
       return toISODate(d);
     }
-
     function earliestPickupDate(now = new Date()) {
       return toISODate(addWorkingDays(now, PROCESSING_WORKING_DAYS));
     }
@@ -651,16 +667,28 @@
       return new Date(dateStr + 'T00:00:00').toLocaleDateString('en-PH', { weekday: 'long', month: 'long', day: 'numeric' });
     }
 
+    function pickupRuleText(minDateStr) {
+      return `Earliest pickup: ${prettyDate(minDateStr)} (${PROCESSING_WORKING_DAYS} working days). Weekends and holidays are not available.`;
+    }
+
     function setupDateLimits() {
       const minDateStr = earliestPickupDate();
       const datePicker = document.getElementById('pickupDatePicker');
       datePicker.min = minDateStr;
       datePicker.value = minDateStr;
-      document.getElementById('pickupEarliestText').innerText = `Earliest pickup: ${prettyDate(minDateStr)} (${PROCESSING_WORKING_DAYS} working days). Weekends are not available.`;
+      document.getElementById('pickupEarliestText').innerText = pickupRuleText(minDateStr);
       document.getElementById('pickupDateHint').classList.add('hidden');
       calculateSlotAvailability();
     }
 
+    // Called when the holiday list changes while the page is open
+    function refreshDateRules() {
+      const datePicker = document.getElementById('pickupDatePicker');
+      const minDateStr = earliestPickupDate();
+      datePicker.min = minDateStr;
+      document.getElementById('pickupEarliestText').innerText = pickupRuleText(minDateStr);
+      if (datePicker.value) onPickupDateChange();
+    }
     function onPickupDateChange() {
       const picker = document.getElementById('pickupDatePicker');
       const hint = document.getElementById('pickupDateHint');
@@ -671,16 +699,18 @@
       if (picker.min && value < picker.min) {
         picker.value = picker.min;
         message = `The earliest pickup date is ${prettyDate(picker.min)}.`;
-      } else if (isWeekend(value)) {
-        picker.value = nextWeekday(value);
-        message = `The office is open Monday to Friday, so weekends are not available. We moved your date to ${prettyDate(picker.value)}.`;
+      } else if (isClosedDay(value)) {
+        const why = closedReason(value);
+        picker.value = nextOpenDay(value);
+        message = why === 'the weekend'
+          ? `The office is open Monday to Friday, so weekends are not available. We moved your date to ${prettyDate(picker.value)}.`
+          : `The office is closed for ${why}. We moved your date to ${prettyDate(picker.value)}.`;
       }
 
       hint.innerText = message;
       hint.classList.toggle('hidden', !message);
       calculateSlotAvailability();
     }
-
     let watchedSlotDate = '';
     let slotUnsub = null;
     let bookedCount = 0;
@@ -773,16 +803,15 @@
 
     function saveSlotSelection() {
       const picker = document.getElementById('pickupDatePicker');
-      if (!picker.value || (picker.min && picker.value < picker.min) || isWeekend(picker.value)) {
+      if (!picker.value || (picker.min && picker.value < picker.min) || isClosedDay(picker.value)) {
         onPickupDateChange();
-        showCustomAlert('Check Your Pickup Date', 'Please choose a weekday (Monday to Friday) on or after the earliest pickup date.');
+        showCustomAlert('Check Your Pickup Date', 'Please choose a weekday (Monday to Friday) that is not a holiday or closure, on or after the earliest pickup date.');
         return;
       }
       studentState.slotDate = picker.value;
       updatePaymentAmountUI();
       showStudentStep('studentStepPayment');
     }
-
     function updatePaymentAmountUI() {
       const docCount = studentState.docs.length;
       const total = docCount * pricePerDocument;
