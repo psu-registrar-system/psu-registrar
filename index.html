@@ -25,6 +25,9 @@
     <span>You are viewing this inside another app. To save images, open this page in Chrome: tap the menu (&#8942; or &bull;&bull;&bull;), then &quot;Open in browser&quot;.</span>
     <button onclick="dismissInAppNotice()" class="font-black text-base leading-none">&times;</button>
   </div>
+  <div id="concernBar" class="hidden bg-white border-b border-amber-200 text-[#5c0612] text-xs font-semibold px-4 py-2 flex items-center justify-center gap-2 text-center">
+    <i class="fa-solid fa-envelope"></i><span>Email for concerns:</span><a id="concernLink" href="#" class="font-black underline break-all"></a>
+  </div>
 
   <!-- TOP NAVIGATION HEADER -->
   <header class="bg-[#5c0612] text-white shadow-xl sticky top-0 z-50 border-b-2 border-[#d4af37]">
@@ -279,6 +282,8 @@
           </div>
         </div>
 
+        <div id="noRefundBox" class="hidden rounded-xl border-2 border-rose-400 bg-rose-50 px-3 py-2.5 text-left text-xs font-bold text-rose-700"><i class="fa-solid fa-ban mr-1.5"></i>No refund policy: online payments are non-refundable. If you cancel your request or do not claim your documents, your payment will not be returned.</div>
+
         <div id="onlineAutoBox" class="hidden p-4 border border-amber-300 bg-amber-50/60 rounded-2xl text-left space-y-1.5 text-xs text-slate-600">
           <div class="font-bold text-[#5c0612]">How online payment works</div>
           <div>1. Tap Finalize. A QR code for the exact amount appears.</div>
@@ -360,6 +365,8 @@
             <div id="payAmount" class="text-2xl font-black text-white"></div>
           </div>
         </div>
+
+        <div id="payNoRefund" class="rounded-xl border-2 border-rose-400 bg-rose-50 px-3 py-2.5 text-left text-xs font-bold text-rose-700"><i class="fa-solid fa-ban mr-1.5"></i>No refund policy: online payments are non-refundable. If you cancel your request or do not claim your documents, your payment will not be returned.</div>
 
         <div class="flex justify-center items-center min-h-[220px]">
           <img id="payQrImage" alt="QR code to pay" class="hidden w-56 h-56 border-4 border-white shadow-md rounded-xl bg-white">
@@ -456,8 +463,21 @@
           <div id="trackPayBox" class="hidden rounded-xl border border-amber-300 bg-amber-50 px-3 py-3 text-xs space-y-2">
             <div class="font-black text-amber-800"><i class="fa-solid fa-wallet mr-1.5"></i>Payment needed</div>
             <div id="trackPayText" class="text-slate-600"></div>
+            <div class="text-[11px] font-bold text-rose-700"><i class="fa-solid fa-ban mr-1"></i>Online payments are non-refundable.</div>
             <button id="trackPayBtn" onclick="payFromTrack()" class="w-full bg-[#5c0612] hover:bg-[#780a18] text-amber-200 font-bold py-2.5 rounded-xl transition border border-amber-500/30">Pay Now</button>
           </div>
+
+          <div id="trackCancelBox" class="hidden rounded-xl border border-slate-300 bg-white px-3 py-3 text-xs space-y-2">
+            <div id="trackCancelText" class="text-slate-600"></div>
+            <button id="trackCancelBtn" onclick="openCancelDialog()" class="w-full bg-white hover:bg-rose-50 text-rose-700 font-bold py-2.5 rounded-xl transition border border-rose-300">Request Cancellation</button>
+          </div>
+
+          <div id="trackUnclaimedBox" class="hidden rounded-xl border border-amber-300 bg-amber-50 px-3 py-3 text-xs space-y-1">
+            <div class="font-black text-amber-800"><i class="fa-solid fa-box-archive mr-1.5"></i>Your documents are being kept for you</div>
+            <div class="text-slate-600">Your pickup date has passed, but your documents are safe. You can still claim them at the registrar's office on any working day. Please bring your PSU Student ID.</div>
+          </div>
+
+          <div id="trackConcern" class="hidden text-[11px] text-slate-500">Have a concern about this request? <a id="trackConcernLink" href="#" class="font-bold text-[#5c0612] underline">Email for concerns</a></div>
 
           <div class="text-xs space-y-2.5">
             <div class="flex justify-between gap-3 border-t border-amber-200/60 pt-2.5"><span class="text-slate-500">Document(s):</span><span id="trackDocs" class="font-bold text-slate-900 text-right"></span></div>
@@ -492,6 +512,42 @@
       <button onclick="closeCustomAlert()" class="w-full bg-[#5c0612] hover:bg-[#780a18] text-amber-200 font-bold py-2.5 rounded-xl text-xs transition">
         Understood
       </button>
+    </div>
+  </div>
+
+  <!-- CANCEL REQUEST -->
+  <div id="cancelModal" class="fixed inset-0 bg-slate-950/60 backdrop-blur-sm hidden z-[70] flex items-center justify-center p-4">
+    <div class="bg-white rounded-2xl shadow-2xl max-w-sm w-full p-6 space-y-4 border border-amber-200 max-h-[92vh] overflow-y-auto overscroll-contain">
+      <div class="flex justify-between items-center border-b border-amber-100 pb-3">
+        <h3 id="cancelTitle" class="text-base font-bold text-[#5c0612]">Request Cancellation</h3>
+        <button onclick="closeCancelDialog()" class="text-slate-400 hover:text-slate-600 text-xl font-bold">&times;</button>
+      </div>
+      <div id="cancelForm" class="space-y-3">
+        <p id="cancelIntro" class="text-xs text-slate-600"></p>
+        <div id="cancelPolicy" class="hidden rounded-xl border-2 border-rose-400 bg-rose-50 px-3 py-2.5 text-left text-xs font-bold text-rose-700"><i class="fa-solid fa-ban mr-1.5"></i>No refund policy: online payments are non-refundable. If you cancel your request or do not claim your documents, your payment will not be returned.</div>
+        <div>
+          <label class="block text-[11px] font-bold text-[#5c0612] mb-1">Your Student ID</label>
+          <input type="text" id="cancelId" autocomplete="off" class="w-full p-2.5 border border-amber-200 rounded-xl text-sm focus:ring-2 focus:ring-[#5c0612] focus:outline-none bg-white">
+        </div>
+        <div>
+          <label class="block text-[11px] font-bold text-[#5c0612] mb-1">Email you used for this request</label>
+          <input type="email" id="cancelEmail" autocomplete="off" class="w-full p-2.5 border border-amber-200 rounded-xl text-sm focus:ring-2 focus:ring-[#5c0612] focus:outline-none bg-white">
+        </div>
+        <div>
+          <label class="block text-[11px] font-bold text-[#5c0612] mb-1">Reason</label>
+          <textarea id="cancelReason" rows="3" maxlength="140" placeholder="Why do you want to cancel?" class="w-full p-2.5 border border-amber-200 rounded-xl text-sm focus:ring-2 focus:ring-[#5c0612] focus:outline-none bg-white"></textarea>
+        </div>
+        <p id="cancelError" class="hidden text-xs font-semibold rounded-lg px-3 py-2 border bg-rose-50 text-rose-700 border-rose-200"></p>
+        <div class="grid grid-cols-2 gap-2">
+          <button onclick="closeCancelDialog()" class="bg-amber-100 hover:bg-amber-200 text-[#5c0612] font-bold py-2.5 rounded-xl text-xs transition">Keep My Request</button>
+          <button id="cancelSubmitBtn" onclick="submitCancel()" class="bg-rose-600 hover:bg-rose-700 text-white font-bold py-2.5 rounded-xl text-xs transition disabled:opacity-60">Send Request</button>
+        </div>
+      </div>
+      <div id="cancelDone" class="hidden space-y-3 text-center">
+        <div class="w-14 h-14 mx-auto rounded-full bg-emerald-100 border-4 border-emerald-300 flex items-center justify-center text-2xl text-emerald-600"><i class="fa-solid fa-check"></i></div>
+        <p id="cancelDoneText" class="text-sm font-semibold text-slate-700"></p>
+        <button id="cancelDoneBtn" onclick="finishCancelDialog()" class="w-full bg-[#5c0612] hover:bg-[#780a18] text-amber-200 font-bold py-2.5 rounded-xl text-xs transition">OK</button>
+      </div>
     </div>
   </div>
 
@@ -572,6 +628,8 @@
         pricePerDocument = (typeof cfg.pricePerDocument === 'number' && cfg.pricePerDocument > 0) ? cfg.pricePerDocument : 100;
         onlineMode = cfg.onlinePaymentMode === 'automatic' ? 'automatic' : 'manual';
         closedRanges = normalizeClosed(cfg.closedDates);
+        concernEmail = /^\S+@\S+\.\S+$/.test(String(cfg.concernEmail || '').trim()) ? String(cfg.concernEmail).trim() : '';
+        renderConcernEmail();
         updateOfficeHoursStatus();
         applyPaymentMode();
         refreshDateRules();
@@ -618,6 +676,7 @@
     let pricePerDocument = 100;                                // changed by the Super Admin in Settings
     let onlineMode = 'manual';                                 // 'manual' (reference code) or 'automatic' (QR Ph)
 
+    let concernEmail = '';                                     // the registrar's email for concerns (set by the Super Admin)
     let closedRanges = [];                                     // holidays and closures set by the Super Admin: [{from, to, name}]
 
     const PROCESSING_WORKING_DAYS = 3;
@@ -846,8 +905,8 @@
       studentState.payment = paymentOpt;
       document.getElementById('gcashInteractiveBox').classList.toggle('hidden', paymentOpt !== 'GCash');
       document.getElementById('onlineAutoBox').classList.toggle('hidden', paymentOpt !== 'Online');
+      document.getElementById('noRefundBox').classList.toggle('hidden', paymentOpt === 'Cash');
     }
-
     function initialPaymentStatus(paymentOpt) {
       if (paymentOpt === 'Online') return 'Awaiting Payment';
       if (paymentOpt === 'GCash') return 'Awaiting Verification';
@@ -1087,7 +1146,7 @@
       notes.push(s.payment === 'GCash'
         ? 'Keep your GCash payment receipt. The Registrar will verify your reference number before processing.'
         : (s.payment === 'Online'
-            ? (s.paymentStatus === 'Paid' ? 'Your online payment has been received.' : 'Pay online within 24 hours: open Track My Request, then tap Pay Now.')
+            ? (s.paymentStatus === 'Paid' ? 'Your online payment has been received. Online payments are non-refundable.' : 'Pay online within 24 hours: open Track My Request, then tap Pay Now. Online payments are non-refundable.')
             : 'Pay at the Cashier window on your pickup date before claiming your documents.'));
       notes.push(`Track your request anytime: open ${pageUrl()}, tap "Track My Request" and enter your reference number.`);
 
@@ -1309,6 +1368,108 @@
       const t = lastTrackData;
       if (!t) return;
       openPayScreen(t.reference, t.amount);
+    }
+
+    /* ---------- EMAIL FOR CONCERNS ---------- */
+    function renderConcernEmail() {
+      const bar = document.getElementById('concernBar');
+      if (!concernEmail) { bar.classList.add('hidden'); return; }
+      const link = document.getElementById('concernLink');
+      link.innerText = concernEmail;
+      link.href = `mailto:${concernEmail}?subject=${encodeURIComponent('Concern - PSU Registrar')}`;
+      bar.classList.remove('hidden');
+      if (lastTrackData) updateTrackConcern(lastTrackData);
+    }
+
+    function updateTrackConcern(t) {
+      const box = document.getElementById('trackConcern');
+      if (!concernEmail || !t) { box.classList.add('hidden'); return; }
+      document.getElementById('trackConcernLink').href =
+        `mailto:${concernEmail}?subject=${encodeURIComponent('Concern about request ' + (t.reference || ''))}`;
+      box.classList.remove('hidden');
+    }
+
+    /* ---------- CANCEL A REQUEST ---------- */
+    async function callApi(action, payload) {
+      try {
+        const res = await fetch(`${PAYMENT_API}/api/${action}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+        let body = {};
+        try { body = await res.json(); } catch (e) {}
+        return { ok: res.ok, status: res.status, body };
+      } catch (error) {
+        return { ok: false, status: 0, body: { error: 'Could not reach the server. Please check your internet connection and try again.' } };
+      }
+    }
+
+    function setCancelError(text) {
+      const el = document.getElementById('cancelError');
+      el.innerText = text || '';
+      el.classList.toggle('hidden', !text);
+    }
+
+    function openCancelDialog() {
+      const t = lastTrackData;
+      if (!t) return;
+      const instant = t.payment === 'Online' && t.paymentStatus === 'Awaiting Payment';
+      const paidOnline = t.payment === 'Online' && t.paymentStatus === 'Paid';
+      document.getElementById('cancelTitle').innerText = instant ? 'Cancel Request' : 'Request Cancellation';
+      document.getElementById('cancelIntro').innerText = instant
+        ? 'Your request has not been paid yet, so it will be cancelled right away.'
+        : 'The registrar will review your request. You can only cancel while your request is still Pending.';
+      document.getElementById('cancelPolicy').classList.toggle('hidden', !(paidOnline || t.payment === 'Online'));
+      document.getElementById('cancelSubmitBtn').innerText = instant ? 'Cancel My Request' : 'Send Request';
+      const slip = lastSubmittedSlip && lastSubmittedSlip.reference === t.reference ? lastSubmittedSlip : null;
+      document.getElementById('cancelId').value = slip ? slip.id : '';
+      document.getElementById('cancelEmail').value = slip ? (slip.email || '') : '';
+      document.getElementById('cancelReason').value = '';
+      document.getElementById('cancelSubmitBtn').disabled = false;
+      setCancelError('');
+      document.getElementById('cancelForm').classList.remove('hidden');
+      document.getElementById('cancelDone').classList.add('hidden');
+      document.getElementById('cancelModal').classList.remove('hidden');
+    }
+
+    function closeCancelDialog() {
+      document.getElementById('cancelModal').classList.add('hidden');
+    }
+
+    function finishCancelDialog() {
+      const wasInstant = document.getElementById('cancelDone').dataset.instant === '1';
+      closeCancelDialog();
+      if (wasInstant) resetStudentFlow();
+    }
+
+    async function submitCancel() {
+      const t = lastTrackData;
+      if (!t) return;
+      const studentId = document.getElementById('cancelId').value.trim();
+      const email = document.getElementById('cancelEmail').value.trim();
+      const reason = document.getElementById('cancelReason').value.trim();
+
+      if (!studentId || !/^\S+@\S+\.\S+$/.test(email)) { setCancelError('Enter your Student ID and the email you used for this request.'); return; }
+      if (reason.length < 3) { setCancelError('Please tell us why you want to cancel.'); return; }
+      setCancelError('');
+
+      const btn = document.getElementById('cancelSubmitBtn');
+      btn.disabled = true;
+      const res = await callApi('request-cancel', { reference: t.reference, lookupKey: lookupKeyFor(studentId, email), reason });
+      btn.disabled = false;
+
+      if (res.ok && res.body.state) {
+        const instant = res.body.state === 'cancelled';
+        document.getElementById('cancelDoneText').innerText = instant
+          ? 'Your request has been cancelled.'
+          : 'Your cancellation request was sent. The registrar will review it, and you can see the result here.';
+        document.getElementById('cancelDone').dataset.instant = instant ? '1' : '0';
+        document.getElementById('cancelForm').classList.add('hidden');
+        document.getElementById('cancelDone').classList.remove('hidden');
+        return;
+      }
+      setCancelError((res.body && res.body.error) || 'Could not send your request. Please try again.');
     }
 
     /* ---------- REFERENCES SAVED ON THIS DEVICE ---------- */
@@ -1546,7 +1707,8 @@
       const statusStyles = {
         'Pending': 'bg-amber-100 text-[#5c0612] border-amber-300',
         'Ready for Pickup': 'bg-amber-200 text-[#5c0612] border-amber-400',
-        'Completed': 'bg-emerald-100 text-emerald-800 border-emerald-300'
+        'Completed': 'bg-emerald-100 text-emerald-800 border-emerald-300',
+        'Cancelled': 'bg-rose-100 text-rose-800 border-rose-300'
       };
       const paymentText = {
         'Paid': 'Paid',
@@ -1568,6 +1730,29 @@
       } else {
         payBox.classList.add('hidden');
       }
+
+      const cancelBox = document.getElementById('trackCancelBox');
+      const cancelState = t.cancelState || '';
+      if (t.status === 'Pending' && cancelState === 'Requested') {
+        document.getElementById('trackCancelText').innerText = 'Cancellation requested. Waiting for the registrar to decide.';
+        document.getElementById('trackCancelBtn').classList.add('hidden');
+        cancelBox.classList.remove('hidden');
+      } else if (t.status === 'Pending') {
+        const awaiting = t.payment === 'Online' && t.paymentStatus === 'Awaiting Payment';
+        document.getElementById('trackCancelText').innerText = cancelState === 'Declined'
+          ? `Your last cancellation request was declined.${t.cancelNote ? ' Note: ' + t.cancelNote : ''}`
+          : 'You can cancel this request while it is still Pending.';
+        document.getElementById('trackCancelBtn').innerText = awaiting ? 'Cancel Request' : 'Request Cancellation';
+        document.getElementById('trackCancelBtn').classList.remove('hidden');
+        cancelBox.classList.remove('hidden');
+      } else {
+        cancelBox.classList.add('hidden');
+      }
+
+      const todayStr = toISODate(new Date());
+      const unclaimed = t.status === 'Ready for Pickup' && (t.unclaimed === true || (t.slot && t.slot < todayStr));
+      document.getElementById('trackUnclaimedBox').classList.toggle('hidden', !unclaimed);
+      updateTrackConcern(t);
 
       document.getElementById('trackReference').innerText = t.reference || '';
       const badge = document.getElementById('trackStatusBadge');
