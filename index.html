@@ -118,6 +118,7 @@
 
     <!-- STEP 2: STUDENT PROFILE -->
     <div id="studentStepAuth" class="student-step hidden bg-white p-6 sm:p-8 rounded-2xl shadow-sm border border-amber-200/80 space-y-5">
+      <div><button type="button" onclick="goBackStep()" class="text-xs font-bold text-[#5c0612] hover:text-[#780a18] inline-flex items-center gap-1.5"><i class="fa-solid fa-arrow-left"></i>Back</button></div>
       <div class="border-b border-amber-100 pb-4">
         <h2 class="text-xl font-bold text-[#5c0612]">Student Profile</h2>
         <p class="text-xs text-slate-500 mt-0.5">Enter your official university details.</p>
@@ -161,6 +162,7 @@
 
     <!-- STEP 3: DOCUMENT SELECTION -->
     <div id="studentStepDoc" class="student-step hidden bg-white p-6 sm:p-8 rounded-2xl shadow-sm border border-amber-200/80 space-y-5">
+      <div><button type="button" onclick="goBackStep()" class="text-xs font-bold text-[#5c0612] hover:text-[#780a18] inline-flex items-center gap-1.5"><i class="fa-solid fa-arrow-left"></i>Back</button></div>
       <div class="border-b border-amber-100 pb-4">
         <h2 class="text-xl font-bold text-[#5c0612]">Document Selection</h2>
         <p class="text-xs text-slate-500 mt-0.5">Select one or more document types and enter official purpose.</p>
@@ -203,6 +205,7 @@
 
     <!-- STEP 4: APPOINTMENT DATE -->
     <div id="studentStepSlot" class="student-step hidden bg-white p-6 sm:p-8 rounded-2xl shadow-sm border border-amber-200/80 space-y-5">
+      <div><button type="button" onclick="goBackStep()" class="text-xs font-bold text-[#5c0612] hover:text-[#780a18] inline-flex items-center gap-1.5"><i class="fa-solid fa-arrow-left"></i>Back</button></div>
       <div class="border-b border-amber-100 pb-4">
         <h2 class="text-xl font-bold text-[#5c0612]">Pickup Appointment Date</h2>
         <p class="text-xs text-slate-500 mt-0.5">Documents take about 3 working days to process. Pickup is Monday to Friday only, except holidays and closures. Up to 200 pickups per day.</p>
@@ -242,6 +245,7 @@
 
     <!-- STEP 5: PAYMENT -->
     <div id="studentStepPayment" class="student-step hidden bg-white p-6 sm:p-8 rounded-2xl shadow-sm border border-amber-200/80 space-y-5">
+      <div><button type="button" onclick="goBackStep()" class="text-xs font-bold text-[#5c0612] hover:text-[#780a18] inline-flex items-center gap-1.5"><i class="fa-solid fa-arrow-left"></i>Back</button></div>
       <div class="border-b border-amber-100 pb-4">
         <h2 class="text-xl font-bold text-[#5c0612]">Payment Method</h2>
         <p class="text-xs text-slate-500 mt-0.5">Choose GCash for online validation or Cash for university cashier payment.</p>
@@ -733,8 +737,9 @@
     function setupDateLimits() {
       const minDateStr = earliestPickupDate();
       const datePicker = document.getElementById('pickupDatePicker');
+      const stillValid = datePicker.value && datePicker.value >= minDateStr && !isClosedDay(datePicker.value);
       datePicker.min = minDateStr;
-      datePicker.value = minDateStr;
+      datePicker.value = stillValid ? datePicker.value : minDateStr;
       document.getElementById('pickupEarliestText').innerText = pickupRuleText(minDateStr);
       document.getElementById('pickupDateHint').classList.add('hidden');
       calculateSlotAvailability();
@@ -1772,6 +1777,27 @@
       document.getElementById('trackResult').classList.remove('hidden');
     }
 
+    // The steps a student can go back through before the request is sent
+    const STEP_BACK = {
+      studentStepAuth: 'studentStepHome',
+      studentStepDoc: 'studentStepAuth',
+      studentStepSlot: 'studentStepDoc',
+      studentStepPayment: 'studentStepSlot'
+    };
+
+    function goBackStep() {
+      const current = document.querySelector('.student-step:not(.hidden)');
+      if (!current) return;
+      const target = STEP_BACK[current.id];
+      if (!target) return;
+      if (current.id === 'studentStepPayment') {
+        // never leave while the request is being sent
+        const send = current.querySelector('button[onclick="finalizeStudentRequest()"]');
+        if (send && send.disabled) return;
+      }
+      showStudentStep(target);
+    }
+
     function resetStudentFlow() {
       studentState = { id: '', name: '', email: '', course: '', year: '', doc: '', docs: [], purpose: '', slotDate: '', payment: 'GCash', refNo: '', totalAmount: 0 };
       document.getElementById('studentIdInput').value = '';
@@ -1782,6 +1808,7 @@
       document.getElementById('gcashRefNumberInput').value = '';
       document.querySelectorAll('.docTypeCheckbox').forEach(cb => cb.checked = false);
       document.getElementById('docTypeError').classList.add('hidden');
+      document.getElementById('pickupDatePicker').value = '';
 
       showStudentStep('studentStepHome');
     }

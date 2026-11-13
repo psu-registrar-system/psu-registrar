@@ -236,35 +236,40 @@
 
       <!-- Holidays & Closures (Super Admin) -->
       <div id="closuresBar" class="super-only hidden p-5 rounded-2xl shadow-sm border bg-white border-amber-200 space-y-3">
-        <div class="flex items-center space-x-3">
-          <div class="w-10 h-10 rounded-xl flex items-center justify-center text-lg bg-amber-100 text-[#5c0612] border border-amber-300"><i class="fa-solid fa-calendar-xmark"></i></div>
-          <div>
-            <h2 class="text-sm font-bold tracking-tight text-[#5c0612]">Holidays &amp; Closures</h2>
-            <p class="text-xs text-slate-500">Students cannot pick these dates, and they do not count toward the 3 working days.</p>
+        <div class="flex items-center justify-between gap-3">
+          <div class="flex items-center space-x-3 min-w-0">
+            <div class="w-10 h-10 shrink-0 rounded-xl flex items-center justify-center text-lg bg-amber-100 text-[#5c0612] border border-amber-300"><i class="fa-solid fa-calendar-xmark"></i></div>
+            <div class="min-w-0">
+              <h2 class="text-sm font-bold tracking-tight text-[#5c0612]">Holidays &amp; Closures <span id="closuresCount" class="text-xs font-bold text-slate-400"></span></h2>
+              <p class="text-xs text-slate-500">Students cannot pick these dates, and they do not count toward the 3 working days.</p>
+            </div>
           </div>
+          <button id="closuresToggle" onclick="toggleClosures()" aria-expanded="false" class="shrink-0 bg-white hover:bg-amber-50 border border-amber-300 text-[#5c0612] text-xs px-3 py-2 rounded-xl transition font-bold">Show</button>
         </div>
-        <div class="grid grid-cols-1 sm:grid-cols-4 gap-3 items-end">
-          <div>
-            <label class="block text-[11px] font-bold text-[#5c0612] mb-1">From</label>
-            <input type="date" id="closureFrom" class="w-full p-2.5 border border-amber-200 rounded-xl text-xs font-bold focus:ring-2 focus:ring-[#5c0612] focus:outline-none bg-amber-50/30">
+        <div id="closuresBody" class="hidden space-y-3">
+          <div class="grid grid-cols-1 sm:grid-cols-4 gap-3 items-end">
+            <div>
+              <label class="block text-[11px] font-bold text-[#5c0612] mb-1">From</label>
+              <input type="date" id="closureFrom" class="w-full p-2.5 border border-amber-200 rounded-xl text-xs font-bold focus:ring-2 focus:ring-[#5c0612] focus:outline-none bg-amber-50/30">
+            </div>
+            <div>
+              <label class="block text-[11px] font-bold text-[#5c0612] mb-1">To (optional)</label>
+              <input type="date" id="closureTo" class="w-full p-2.5 border border-amber-200 rounded-xl text-xs font-bold focus:ring-2 focus:ring-[#5c0612] focus:outline-none bg-amber-50/30">
+            </div>
+            <div>
+              <label class="block text-[11px] font-bold text-[#5c0612] mb-1">Name</label>
+              <input type="text" id="closureName" maxlength="60" placeholder="e.g. Christmas break" class="w-full p-2.5 border border-amber-200 rounded-xl text-xs font-bold focus:ring-2 focus:ring-[#5c0612] focus:outline-none bg-amber-50/30">
+            </div>
+            <button id="closureAddBtn" onclick="addClosure()" class="bg-[#5c0612] hover:bg-[#780a18] text-amber-200 font-bold py-2.5 rounded-xl text-xs transition border border-amber-500/30 disabled:opacity-60">Add</button>
           </div>
-          <div>
-            <label class="block text-[11px] font-bold text-[#5c0612] mb-1">To (optional)</label>
-            <input type="date" id="closureTo" class="w-full p-2.5 border border-amber-200 rounded-xl text-xs font-bold focus:ring-2 focus:ring-[#5c0612] focus:outline-none bg-amber-50/30">
+          <div class="flex flex-wrap items-center gap-2">
+            <select id="closureYear" class="p-2 border border-amber-200 rounded-xl text-xs font-bold bg-amber-50/30"></select>
+            <button onclick="addFixedHolidays()" class="bg-white hover:bg-amber-50 border border-amber-300 text-[#5c0612] text-xs px-3 py-2 rounded-xl transition font-bold">Add common fixed-date holidays</button>
           </div>
-          <div>
-            <label class="block text-[11px] font-bold text-[#5c0612] mb-1">Name</label>
-            <input type="text" id="closureName" maxlength="60" placeholder="e.g. Christmas break" class="w-full p-2.5 border border-amber-200 rounded-xl text-xs font-bold focus:ring-2 focus:ring-[#5c0612] focus:outline-none bg-amber-50/30">
-          </div>
-          <button id="closureAddBtn" onclick="addClosure()" class="bg-[#5c0612] hover:bg-[#780a18] text-amber-200 font-bold py-2.5 rounded-xl text-xs transition border border-amber-500/30 disabled:opacity-60">Add</button>
+          <p id="closureMessage" class="hidden text-xs font-semibold"></p>
+          <div id="closureList" class="space-y-1.5"></div>
+          <p class="text-[10px] text-slate-400">Holidays that move every year (Holy Week, Eid) are not included in the quick list. Add them by hand after checking the official announcement or the university calendar.</p>
         </div>
-        <div class="flex flex-wrap items-center gap-2">
-          <select id="closureYear" class="p-2 border border-amber-200 rounded-xl text-xs font-bold bg-amber-50/30"></select>
-          <button onclick="addFixedHolidays()" class="bg-white hover:bg-amber-50 border border-amber-300 text-[#5c0612] text-xs px-3 py-2 rounded-xl transition font-bold">Add common fixed-date holidays</button>
-        </div>
-        <p id="closureMessage" class="hidden text-xs font-semibold"></p>
-        <div id="closureList" class="space-y-1.5"></div>
-        <p class="text-[10px] text-slate-400">Holidays that move every year (Holy Week, Eid) are not included in the quick list. Add them by hand after checking the official announcement or the university calendar.</p>
       </div>
 
       <!-- Metrics -->
@@ -297,15 +302,15 @@
         <div id="globalResults" class="hidden absolute z-30 left-0 right-0 mt-1 bg-white border border-amber-200 rounded-2xl shadow-xl max-h-[60vh] overflow-y-auto divide-y divide-amber-100"></div>
       </div>
 
-      <div class="flex items-center gap-2">
-        <button id="tabQueue" onclick="switchView('queue')" class="px-4 py-2 rounded-xl text-xs font-bold border bg-[#5c0612] text-amber-200 border-[#5c0612]">Active Queue</button>
-        <button id="tabInventory" onclick="switchView('inventory')" class="px-4 py-2 rounded-xl text-xs font-bold border bg-white text-[#5c0612] border-amber-300 hover:bg-amber-50">
+      <div class="grid grid-cols-4 gap-1.5 sm:gap-2">
+        <button id="tabQueue" onclick="switchView('queue')" class="w-full px-1 py-2 rounded-xl text-[11px] sm:text-xs font-bold border leading-tight flex flex-col items-center justify-center gap-0.5 text-center bg-[#5c0612] text-amber-200 border-[#5c0612]">Active Queue</button>
+        <button id="tabInventory" onclick="switchView('inventory')" class="w-full px-1 py-2 rounded-xl text-[11px] sm:text-xs font-bold border leading-tight flex flex-col items-center justify-center gap-0.5 text-center bg-white text-[#5c0612] border-amber-300 hover:bg-amber-50">
           Inventory <span id="inventoryCount" class="ml-1 text-[10px] font-black px-1.5 py-0.5 rounded-full bg-amber-200 text-[#5c0612]">0</span>
         </button>
-        <button id="tabSummary" onclick="switchView('summary')" class="px-4 py-2 rounded-xl text-xs font-bold border bg-white text-[#5c0612] border-amber-300 hover:bg-amber-50">Monthly Summary</button>
-        <button id="tabAwaiting" onclick="switchView('awaiting')" class="px-4 py-2 rounded-xl text-xs font-bold border bg-white text-[#5c0612] border-amber-300 hover:bg-amber-50">Awaiting Payment <span id="awaitingCount" class="ml-1 text-[10px] font-black px-1.5 py-0.5 rounded-full bg-amber-200 text-[#5c0612]">0</span></button>
-        <button id="tabUnclaimed" onclick="switchView('unclaimed')" class="px-4 py-2 rounded-xl text-xs font-bold border bg-white text-[#5c0612] border-amber-300 hover:bg-amber-50">Unclaimed <span id="unclaimedCount" class="ml-1 text-[10px] font-black px-1.5 py-0.5 rounded-full bg-amber-200 text-[#5c0612]">0</span></button>
-        <span class="super-only hidden"><button id="tabActivity" onclick="switchView('activity')" class="px-4 py-2 rounded-xl text-xs font-bold border bg-white text-[#5c0612] border-amber-300 hover:bg-amber-50">Activity Log</button></span>
+        <button id="tabSummary" onclick="switchView('summary')" class="w-full px-1 py-2 rounded-xl text-[11px] sm:text-xs font-bold border leading-tight flex flex-col items-center justify-center gap-0.5 text-center bg-white text-[#5c0612] border-amber-300 hover:bg-amber-50">Monthly Summary</button>
+        <button id="tabAwaiting" onclick="switchView('awaiting')" class="w-full px-1 py-2 rounded-xl text-[11px] sm:text-xs font-bold border leading-tight flex flex-col items-center justify-center gap-0.5 text-center bg-white text-[#5c0612] border-amber-300 hover:bg-amber-50">Awaiting Payment <span id="awaitingCount" class="text-[10px] font-black px-1.5 py-0.5 rounded-full bg-amber-200 text-[#5c0612]">0</span></button>
+        <button id="tabUnclaimed" onclick="switchView('unclaimed')" class="w-full px-1 py-2 rounded-xl text-[11px] sm:text-xs font-bold border leading-tight flex flex-col items-center justify-center gap-0.5 text-center bg-white text-[#5c0612] border-amber-300 hover:bg-amber-50">Unclaimed <span id="unclaimedCount" class="text-[10px] font-black px-1.5 py-0.5 rounded-full bg-amber-200 text-[#5c0612]">0</span></button>
+        <span class="super-only hidden"><button id="tabActivity" onclick="switchView('activity')" class="w-full px-1 py-2 rounded-xl text-[11px] sm:text-xs font-bold border leading-tight flex flex-col items-center justify-center gap-0.5 text-center bg-white text-[#5c0612] border-amber-300 hover:bg-amber-50">Activity Log</button></span>
       </div>
 
       <!-- Processing Queue Table -->
@@ -2026,8 +2031,8 @@
     function switchView(view) {
       const views = { queue: 'queueView', inventory: 'inventoryView', summary: 'summaryView', awaiting: 'awaitingView', unclaimed: 'unclaimedView', activity: 'activityView' };
       const tabs = { queue: 'tabQueue', inventory: 'tabInventory', summary: 'tabSummary', awaiting: 'tabAwaiting', unclaimed: 'tabUnclaimed', activity: 'tabActivity' };
-      const active = 'px-4 py-2 rounded-xl text-xs font-bold border bg-[#5c0612] text-amber-200 border-[#5c0612]';
-      const idle = 'px-4 py-2 rounded-xl text-xs font-bold border bg-white text-[#5c0612] border-amber-300 hover:bg-amber-50';
+      const active = 'w-full px-1 py-2 rounded-xl text-[11px] sm:text-xs font-bold border leading-tight flex flex-col items-center justify-center gap-0.5 text-center bg-[#5c0612] text-amber-200 border-[#5c0612]';
+      const idle = 'w-full px-1 py-2 rounded-xl text-[11px] sm:text-xs font-bold border leading-tight flex flex-col items-center justify-center gap-0.5 text-center bg-white text-[#5c0612] border-amber-300 hover:bg-amber-50';
       Object.keys(views).forEach((key) => {
         document.getElementById(views[key]).classList.toggle('hidden', view !== key);
         document.getElementById(tabs[key]).className = view === key ? active : idle;
@@ -2715,6 +2720,24 @@
     }
 
     /* ---------- HOLIDAYS & CLOSURES ---------- */
+    // The panel is closed by default so a long list does not push everything else down.
+    function applyClosuresOpen(open) {
+      const body = document.getElementById('closuresBody');
+      const btn = document.getElementById('closuresToggle');
+      if (!body || !btn) return;
+      body.classList.toggle('hidden', !open);
+      btn.innerText = open ? 'Hide' : 'Show';
+      btn.setAttribute('aria-expanded', open ? 'true' : 'false');
+    }
+
+    function toggleClosures() {
+      const body = document.getElementById('closuresBody');
+      if (!body) return;
+      const open = body.classList.contains('hidden');
+      applyClosuresOpen(open);
+      try { localStorage.setItem('psu_closures_open', open ? '1' : '0'); } catch (e) {}
+    }
+
     function normalizeClosedDates(list) {
       if (!Array.isArray(list)) return [];
       const iso = /^\d{4}-\d{2}-\d{2}$/;
@@ -2767,6 +2790,12 @@
     function renderClosures() {
       const list = document.getElementById('closureList');
       if (!list) return;
+
+      const countEl = document.getElementById('closuresCount');
+      if (countEl) countEl.innerText = closedDates.length ? `(${closedDates.length})` : '';
+      let open = false;
+      try { open = localStorage.getItem('psu_closures_open') === '1'; } catch (e) {}
+      applyClosuresOpen(open);
 
       const select = document.getElementById('closureYear');
       if (select && !select.innerHTML) {
